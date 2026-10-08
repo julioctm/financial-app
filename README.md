@@ -36,3 +36,4 @@ Toda spec segue o template em [`_template/spec.md`](./_template/spec.md), com as
 | ID | Nome | Status |
 |----|------|--------|
 | [001-auth](./001-auth/spec.md) | Autenticação de Usuários | Draft |
+| [002-social-auth](./002-social-auth/spec.md) | Login Social com Google | Draft |
