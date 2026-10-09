@@ -21,9 +21,18 @@ export type Person = {
 };
 
 export async function getWorkspaces(): Promise<WorkspaceSummary[]> {
-  const { data } = await createClient()
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Members can read every membership row of their workspaces (RLS), so the
+  // query must be scoped to the current user or it returns one row per member.
+  const { data } = await supabase
     .from('workspace_members')
-    .select('role, workspaces(id, name)');
+    .select('role, workspaces(id, name)')
+    .eq('user_id', user.id);
 
   const rows = (data ?? []) as unknown as {
     role: WorkspaceRole;

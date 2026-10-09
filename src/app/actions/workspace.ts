@@ -124,13 +124,16 @@ export async function removeExternalPerson(
   personId: string,
 ): Promise<ActionResult> {
   // Soft removal: the person stays for historical entries but disappears from the options.
-  const { error } = await createClient()
+  const { data, error } = await createClient()
     .from('people')
     .update({ is_active: false })
     .eq('id', personId)
     .eq('workspace_id', workspaceId)
-    .is('user_id', null);
+    .is('user_id', null)
+    .select('id');
   if (error) return { ok: false, error: friendlyError(error.message) };
+  // RLS filters unauthorized rows silently, so zero rows means "not allowed".
+  if (!data?.length) return { ok: false, error: friendlyError('forbidden') };
   revalidatePath('/settings');
   return { ok: true };
 }
