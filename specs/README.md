@@ -37,3 +37,5 @@ Toda spec segue o template em [`_template/spec.md`](./_template/spec.md), com as
 |----|------|--------|
 | [001-auth](./001-auth/spec.md) | Autenticação de Usuários | Implemented |
 | [002-social-auth](./002-social-auth/spec.md) | Login Social com Google | In Review |
+| [003-workspaces](./003-workspaces/spec.md) | Workspaces Compartilhados | Approved |
+| [004-lancamentos](./004-lancamentos/spec.md) | Lançamentos (Contas, Títulos e Transações) | Approved |
