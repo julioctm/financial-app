@@ -1,6 +1,6 @@
 # Lançamentos (Contas, Títulos e Transações)
 
-**Status:** Draft
+**Status:** Approved
 **Spec ID:** 004-lancamentos
 **Autor:**
 **Data:** 2026-10-09
@@ -31,13 +31,13 @@ Permitir cadastrar e consultar lançamentos de um workspace de duas formas: **ja
 ### Cadastros (todos criáveis, editáveis e arquiváveis pelos membros)
 
 1. **Contas de pagamento** (cartão de crédito, conta corrente, dinheiro, outro): nome, tipo, pessoa titular opcional, dia de fechamento opcional
-2. **Títulos** (contas contábeis, ex.: "Luz", "Mercado"): nome, natureza (receita, despesa, investimento), tipo e categoria opcionais
-3. **Tipos** (agrupadores como "Custo fixo", "Conforto", "Metas") e **Categorias** (agrupadores como "Essencial", "Doações"): nome livre, criáveis pelo usuário. São dois eixos independentes; um título pode ter um de cada
+2. **Títulos** (contas contábeis, ex.: "Luz", "Mercado"): nome, natureza (receita, despesa, investimento), **categoria** opcional e **tipo padrão** opcional
+3. **Tipos** (agrupadores como "Custo fixo", "Conforto", "Metas") e **Categorias** (agrupadores como "Essencial", "Doações"): nome livre, criáveis pelo usuário. São dois eixos independentes: a **categoria pertence ao título**; o **tipo pertence ao lançamento** (opcional) e vem preenchido com o tipo padrão do título, podendo ser trocado
 4. Itens arquivados não aparecem em novos lançamentos, mas permanecem nos históricos
 
 ### Lançamento
 
-5. Campos do lançamento: data da compra, **mês de pagamento**, conta de pagamento, título, descrição, valor, **Dono(s)** e **Pagar Para** (opcional)
+5. Campos do lançamento: data da compra, **mês de pagamento**, conta de pagamento, título, **tipo** (opcional), descrição, valor, **Dono(s)** e **Pagar Para** (opcional)
 6. O mês de pagamento é sempre informado/confirmado pelo usuário. Se a conta tem dia de fechamento, o sistema **sugere** o mês (compra após o fechamento sugere o mês seguinte); o usuário pode alterar
 7. **Dono:** por padrão aplica-se o **rateio padrão do workspace** (spec 003) como ponto de partida; o usuário pode editar percentuais, escolher um único dono, ou excluir membros daquele lançamento
 8. O rateio de cada lançamento é salvo como **cópia** (`transaction_shares`); mudar o padrão depois não altera lançamentos existentes
@@ -49,7 +49,7 @@ Permitir cadastrar e consultar lançamentos de um workspace de duas formas: **ja
 
 ### Tabela estilo planilha
 
-14. Tela de lançamentos em **tabela** com uma linha por lançamento e colunas: data, mês de pagamento, conta, título, tipo, descrição, dono(s), pagar para, valor
+14. Tela de lançamentos em **tabela** com uma linha por lançamento e colunas: data, mês de pagamento, conta, título, tipo, categoria (do título), descrição, dono(s), pagar para, valor
 15. **Edição direta na célula** (clique ou Enter), navegação por teclado (setas, Tab, Enter, Esc), com salvamento automático por célula e indicação de salvo/erro
 16. Linha vazia no fim para **adicionar rapidamente**; copiar e colar de várias células/linhas (inclusive vindas do Google Sheets)
 17. **Filtros e busca:** mês de pagamento, conta, título, tipo, categoria, dono, pagar para, texto livre e faixa de valor; **ordenação** por coluna; filtros salvos na URL
@@ -97,7 +97,8 @@ categories                            -- "Categorias" (Essencial, Torra...)
 ledger_accounts                       -- "Títulos" (contas contábeis)
 ├── id, workspace_id, name
 ├── kind (enum: income, expense, investment)
-├── envelope_id (nullable, fk), category_id (nullable, fk)
+├── category_id (nullable, fk)
+├── default_envelope_id (nullable, fk)   -- tipo sugerido nos lançamentos
 └── archived_at
 
 installment_groups
@@ -110,6 +111,7 @@ transactions
 ├── purchase_date (date)
 ├── payment_month (date)                       -- sempre dia 1
 ├── account_id (fk, nullable), ledger_account_id (fk)
+├── envelope_id (nullable, fk)                 -- tipo do lançamento
 ├── description (text)
 ├── amount_cents (bigint)                      -- negativo = despesa
 ├── pay_to_person_id (nullable, fk -> people.id)
@@ -133,7 +135,8 @@ transaction_shares                             -- cópia do rateio no momento do
 - Parcelas: `payment_month` = mês do primeiro pagamento + (i - 1); soma das parcelas = valor total (diferença de centavos na primeira parcela)
 - Editar valor de um lançamento recalcula `amount_cents` das partes mantendo os percentuais
 - Título arquivado ou conta arquivada não podem ser escolhidos em novos lançamentos
-- Tipo e categoria exibidos num lançamento vêm do título (não são copiados); trocar o tipo do título altera a visão histórica (aceito na v1)
+- **Tipo** é guardado no lançamento (herda `default_envelope_id` do título na criação; trocar o padrão do título não altera lançamentos existentes). **Categoria** vem sempre do título; trocar a categoria do título altera a visão histórica (aceito na v1)
+- Receitas e despesas vivem na mesma tabela de lançamentos; a natureza vem do título e o sinal do valor
 
 ## 8. Fluxos de UI/UX
 
@@ -165,14 +168,16 @@ transaction_shares                             -- cópia do rateio no momento do
 - [ ] Dado a tabela, quando edito o valor de uma célula e saio dela, então o valor é salvo e o rodapé de totais é atualizado
 - [ ] Dado 10 mil lançamentos, quando rolo e filtro a tabela, então a interface permanece fluida
 - [ ] Dado conta com fechamento dia 10, quando lanço compra no dia 15, então o mês de pagamento sugerido é o seguinte e posso alterá-lo
+- [ ] Dado título com tipo padrão "Conforto", quando crio um lançamento nele, então o tipo vem "Conforto" e posso trocá-lo sem afetar o título
 - [ ] Dado um novo cartão criado pelo seletor da tabela, então ele já fica disponível no lançamento
 - [ ] Dado a importação rodada duas vezes, então a contagem de lançamentos não muda na segunda vez
 - [ ] Dado usuário fora do workspace, então não vê nenhum dos dados acima (RLS)
 
 ## 11. Perguntas Abertas
 
-- **Tipo x Categoria:** na planilha há "Tipo" (Custo fixo, Conforto, Metas, Prazer, Liberdade Financeira, Conhecimento), com % da renda no orçamento doméstico, e "Categoria" (Essencial, Torra, Doações, Investimento), usada nos indicadores do orçamento individual. A spec os trata como dois eixos independentes sobre o título. Confirmar se faz sentido ou se são um só
+- ~~Tipo x Categoria~~ Resolvido (conferido nos dados): são dois eixos; categoria no título, tipo no lançamento com padrão herdado do título.
+- ~~Receitas na mesma tabela?~~ Resolvido: sim, valor positivo, natureza vem do título.
 - Biblioteca da tabela editável (candidatos: TanStack Table + virtualização, AG Grid Community) a decidir no plano de implementação
-- Importação: linhas sem Dono (~15% do histórico) devem virar dono = quem? Linhas com tipo vazio herdam o tipo do título?
-- Receitas entram na mesma tabela (valor positivo) ou têm tela própria?
-- Quando o mês de pagamento é informado, o sistema deve impedir meses muito distantes da data da compra?
+- Importação, linhas sem Dono (~1,6 mil): proposta de inferir o dono pelo titular do cartão (ex.: "Inter-Julio"); linhas sem cartão, tipo e valor devem ser descartadas. Confirmar no relatório da simulação
+- Importação: a coluna Tipo da planilha só existe em parte das linhas; quando vazia, o lançamento importado fica sem tipo (não herda do título)
+- Limite de distância entre data da compra e mês de pagamento (aviso de usabilidade), decidir na implementação

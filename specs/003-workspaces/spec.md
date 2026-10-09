@@ -1,6 +1,6 @@
 # Workspaces Compartilhados
 
-**Status:** Draft
+**Status:** Approved
 **Spec ID:** 003-workspaces
 **Autor:**
 **Data:** 2026-10-09
@@ -127,6 +127,6 @@ workspace_split_defaults
 
 ## 11. Perguntas Abertas
 
-- Só o `owner` convida e administra, ou qualquer membro? (proposta: só `owner`, fácil de relaxar depois)
-- Convite por e-mail enviado pelo app entra em qual fase? (v1: link copiável, sem depender de service role nem SMTP)
-- Pessoas externas (sem login) são aceitáveis no modelo? (proposta: sim, o histórico real tem donos e destinatários de acerto que não são membros)
+- ~~Quem convida e administra?~~ Resolvido: somente o `owner`.
+- ~~Pessoas externas (sem login) são aceitáveis?~~ Resolvido: sim.
+- Convite por e-mail enviado pelo app entra em qual fase? (v1: link copiável, sem depender de service role nem SMTP; adiado)
