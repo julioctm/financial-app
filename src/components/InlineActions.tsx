@@ -15,6 +15,53 @@ function useAction() {
   return { error, pending, setError, start };
 }
 
+// Two-step inline confirmation (window.confirm is blocked in some browsers/webviews).
+function ConfirmRemove({
+  message,
+  onConfirm,
+  pending,
+}: {
+  message: string;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  const [asking, setAsking] = useState(false);
+  if (!asking) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAsking(true)}
+        className="text-sm text-red-600 hover:underline"
+      >
+        Remover
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-2 text-sm">
+      <span className="text-gray-600">{message}</span>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setAsking(false);
+          onConfirm();
+        }}
+        className="font-semibold text-red-600 hover:underline"
+      >
+        Confirmar
+      </button>
+      <button
+        type="button"
+        onClick={() => setAsking(false)}
+        className="text-gray-600 hover:underline"
+      >
+        Cancelar
+      </button>
+    </span>
+  );
+}
+
 export function RemoveMemberButton({
   workspaceId,
   userId,
@@ -27,25 +74,17 @@ export function RemoveMemberButton({
   const { error, pending, setError, start } = useAction();
   return (
     <span>
-      <button
-        disabled={pending}
-        onClick={() => {
-          if (
-            !confirm(
-              `Remover ${name} do workspace? O histórico dela é mantido.`,
-            )
-          )
-            return;
+      <ConfirmRemove
+        pending={pending}
+        message={`Remover ${name}? O histórico é mantido.`}
+        onConfirm={() => {
           setError(null);
           start(async () => {
             const res = await removeMember(workspaceId, userId);
             if (!res.ok) setError(res.error);
           });
         }}
-        className="text-sm text-red-600 hover:underline"
-      >
-        Remover
-      </button>
+      />
       {error && <span className="ml-2 text-sm text-red-600">{error}</span>}
     </span>
   );
@@ -137,25 +176,17 @@ export function RemoveExternalButton({
   const { error, pending, setError, start } = useAction();
   return (
     <span>
-      <button
-        disabled={pending}
-        onClick={() => {
-          if (
-            !confirm(
-              `Remover ${name}? Lançamentos antigos continuam com o nome dela, mas ela some das opções novas.`,
-            )
-          )
-            return;
+      <ConfirmRemove
+        pending={pending}
+        message={`Remover ${name}?`}
+        onConfirm={() => {
           setError(null);
           start(async () => {
             const res = await removeExternalPerson(workspaceId, personId);
             if (!res.ok) setError(res.error);
           });
         }}
-        className="text-sm text-red-600 hover:underline"
-      >
-        Remover
-      </button>
+      />
       {error && <span className="ml-2 text-sm text-red-600">{error}</span>}
     </span>
   );
