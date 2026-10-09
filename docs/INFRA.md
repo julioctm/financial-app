@@ -49,3 +49,16 @@ Authentication > Email Templates. O link padrão usa PKCE e só funciona no mesm
 <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard">Confirmar meu e-mail</a></p>
 ```
 `{{ .SiteURL }}` vem de Authentication > URL Configuration (use `http://localhost:3000` no projeto dev).
+
+## 5. Ambientes (estado atual)
+
+| Ambiente | Código | Supabase | Variáveis Vercel |
+|---|---|---|---|
+| Local | sua branch | projeto dev | `.env.local` |
+| Preview (PR) | branch do PR | projeto dev | escopo **Preview** |
+| Produção | `main` | projeto prod | escopo **Production** |
+
+- `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` existem em duas versões (Production = prod, Preview = dev). Use a *publishable key* (`sb_publishable_...`); nunca a `sb_secret_...`.
+- Mudanças de schema: criar migration em `supabase/migrations/`, aplicar no dev, testar e só então aplicar no prod.
+- Cada projeto Supabase precisa ter: migration aplicada, Site URL e Redirect URLs próprios, os dois templates de e-mail (seção 4) e SMTP configurado.
+- Fluxo de Git: feature branch curta -> PR (CI + preview da Vercel) -> merge na `main` -> deploy de produção.

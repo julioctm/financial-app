@@ -1,6 +1,6 @@
 # Autenticação de Usuários
 
-**Status:** Approved
+**Status:** Implemented
 **Spec ID:** 001-auth
 **Autor:** 
 **Data:** 2026-10-06
