@@ -38,3 +38,6 @@ next-env.d.ts
 # Vercel / Supabase
 .vercel
 supabase/.temp
+
+# Dados financeiros reais (planilhas) - nunca versionar
+private/
