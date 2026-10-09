@@ -1,0 +1,12 @@
+node_modules/
+build/
+dist/
+out/
+.next/
+.git/
+*.min.js
+*.map
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

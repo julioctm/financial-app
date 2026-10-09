@@ -1,6 +1,6 @@
 # Autenticação de Usuários
 
-**Status:** Draft
+**Status:** Approved
 **Spec ID:** 001-auth
 **Autor:** 
 **Data:** 2026-10-06
@@ -49,6 +49,9 @@ profiles
 
 - Row Level Security (RLS) habilitado em todas as tabelas de dados do usuário: cada linha só é visível/editável pelo próprio `auth.uid()`
 - E-mail deve ser único no sistema (garantido pelo Supabase Auth)
+- Confirmação de e-mail obrigatória no cadastro
+- Mensagem de redefinição de senha é a mesma exista ou não o e-mail (evita enumeração de contas)
+- Senha com no mínimo 8 caracteres
 
 ## 8. Fluxos de UI/UX
 
@@ -74,5 +77,5 @@ profiles
 
 ## 11. Perguntas Abertas
 
-- Login social entra em qual fase do roadmap?
-- Qual o tempo de expiração de sessão desejado?
+- ~~Login social entra em qual fase do roadmap?~~ Resolvido: spec 002-social-auth, logo após esta.
+- ~~Tempo de expiração de sessão?~~ Resolvido: padrão do Supabase (access token de 1h, renovado automaticamente via refresh token; sessão persiste até logout). Ajustável no dashboard do Supabase se necessário.
