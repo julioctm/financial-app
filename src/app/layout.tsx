@@ -28,7 +28,10 @@ export default async function RootLayout({
           <nav className="flex items-center space-x-6">
             {user ? (
               <>
-                <a href="/dashboard" className="text-gray-700 hover:text-brand-600">
+                <a
+                  href="/dashboard"
+                  className="text-gray-700 hover:text-brand-600"
+                >
                   Dashboard
                 </a>
                 <form action="/auth/signout" method="post">

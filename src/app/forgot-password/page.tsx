@@ -23,7 +23,10 @@ export default function ForgotPasswordPage() {
   if (sent) {
     return (
       <div className="card mx-auto max-w-sm">
-        <p>Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.</p>
+        <p>
+          Se o e-mail estiver cadastrado, você receberá um link para redefinir a
+          senha.
+        </p>
       </div>
     );
   }
@@ -31,8 +34,16 @@ export default function ForgotPasswordPage() {
   return (
     <form onSubmit={onSubmit} className="card mx-auto max-w-sm space-y-4">
       <h1 className="text-2xl font-bold">Redefinir senha</h1>
-      <input name="email" type="email" required placeholder="E-mail" className="w-full rounded border p-2" />
-      <button disabled={loading} className="btn btn-primary w-full">Enviar link</button>
+      <input
+        name="email"
+        type="email"
+        required
+        placeholder="E-mail"
+        className="w-full rounded border p-2"
+      />
+      <button disabled={loading} className="btn btn-primary w-full">
+        Enviar link
+      </button>
     </form>
   );
 }

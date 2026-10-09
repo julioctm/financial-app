@@ -46,15 +46,45 @@ export default function SignupPage() {
   return (
     <form onSubmit={onSubmit} className="card mx-auto max-w-sm space-y-4">
       <h1 className="text-2xl font-bold">Criar conta</h1>
-      <input name="email" type="email" required placeholder="E-mail" autoComplete="email" className="w-full rounded border p-2" />
-      <input name="password" type="password" required minLength={8} placeholder="Senha (mín. 8 caracteres)" autoComplete="new-password" className="w-full rounded border p-2" />
-      <input name="confirm" type="password" required minLength={8} placeholder="Confirmar senha" autoComplete="new-password" className="w-full rounded border p-2" />
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      <input
+        name="email"
+        type="email"
+        required
+        placeholder="E-mail"
+        autoComplete="email"
+        className="w-full rounded border p-2"
+      />
+      <input
+        name="password"
+        type="password"
+        required
+        minLength={8}
+        placeholder="Senha (mín. 8 caracteres)"
+        autoComplete="new-password"
+        className="w-full rounded border p-2"
+      />
+      <input
+        name="confirm"
+        type="password"
+        required
+        minLength={8}
+        placeholder="Confirmar senha"
+        autoComplete="new-password"
+        className="w-full rounded border p-2"
+      />
+      {error && (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
       <button disabled={loading} className="btn btn-primary w-full">
         {loading ? 'Criando…' : 'Criar conta'}
       </button>
       <p className="text-sm">
-        Já tem conta? <a href="/login" className="text-brand-600">Entrar</a>
+        Já tem conta?{' '}
+        <a href="/login" className="text-brand-600">
+          Entrar
+        </a>
       </p>
     </form>
   );

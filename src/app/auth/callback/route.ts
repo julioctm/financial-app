@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const rawNext = searchParams.get('next') ?? '/dashboard';
   // Only allow same-origin relative paths to avoid open redirects.
-  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard';
+  const next =
+    rawNext.startsWith('/') && !rawNext.startsWith('//')
+      ? rawNext
+      : '/dashboard';
 
   if (code) {
     const { error } = await createClient().auth.exchangeCodeForSession(code);

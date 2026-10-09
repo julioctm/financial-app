@@ -26,9 +26,23 @@ export default function ResetPasswordPage() {
   return (
     <form onSubmit={onSubmit} className="card mx-auto max-w-sm space-y-4">
       <h1 className="text-2xl font-bold">Nova senha</h1>
-      <input name="password" type="password" required minLength={8} placeholder="Nova senha" autoComplete="new-password" className="w-full rounded border p-2" />
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      <button disabled={loading} className="btn btn-primary w-full">Salvar</button>
+      <input
+        name="password"
+        type="password"
+        required
+        minLength={8}
+        placeholder="Nova senha"
+        autoComplete="new-password"
+        className="w-full rounded border p-2"
+      />
+      {error && (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
+      <button disabled={loading} className="btn btn-primary w-full">
+        Salvar
+      </button>
     </form>
   );
 }
