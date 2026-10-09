@@ -33,3 +33,19 @@ Instalar Node 20 LTS (ex.: `brew install node@20` ou https://nodejs.org), depois
 - [ ] Rota `/dashboard` deslogado redireciona para `/login`
 - [ ] Reset de senha funciona ponta a ponta
 - [ ] Em produção, perfil criado em `public.profiles` ao cadastrar
+
+## 4. Templates de e-mail (obrigatório)
+Authentication > Email Templates. O link padrão usa PKCE e só funciona no mesmo navegador que pediu o e-mail. Troque o link por um baseado em `token_hash`:
+
+**Reset Password**
+```
+<h2>Redefinir senha</h2>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password">Redefinir minha senha</a></p>
+```
+
+**Confirm signup**
+```
+<h2>Confirme seu e-mail</h2>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard">Confirmar meu e-mail</a></p>
+```
+`{{ .SiteURL }}` vem de Authentication > URL Configuration (use `http://localhost:3000` no projeto dev).

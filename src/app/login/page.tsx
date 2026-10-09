@@ -1,11 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+
+  // Read after mount to avoid a server/client hydration mismatch.
+  useEffect(() => {
+    if (
+      new URLSearchParams(window.location.search).get('error') ===
+      'link_invalido'
+    ) {
+      setError('Link inválido ou expirado. Solicite um novo.');
+    }
+  }, []);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
