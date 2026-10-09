@@ -1,5 +1,6 @@
 import {
   AddExternalForm,
+  RemoveExternalButton,
   RemoveMemberButton,
   RenameMeForm,
 } from '@/components/InlineActions';
@@ -119,9 +120,18 @@ export default async function SettingsPage() {
           acessam o app.
         </p>
         {externals.length > 0 && (
-          <ul className="list-disc pl-5">
+          <ul className="divide-y">
             {externals.map((p) => (
-              <li key={p.id}>{p.display_name}</li>
+              <li key={p.id} className="flex items-center justify-between py-2">
+                <span>{p.display_name}</span>
+                {isOwner && (
+                  <RemoveExternalButton
+                    workspaceId={active.id}
+                    personId={p.id}
+                    name={p.display_name}
+                  />
+                )}
+              </li>
             ))}
           </ul>
         )}

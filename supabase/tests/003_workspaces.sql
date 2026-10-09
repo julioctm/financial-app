@@ -160,6 +160,20 @@ select pg_temp.throws(format($q$select public.set_split_defaults(%L::uuid, %L::j
   'split_members_mismatch');
 select pg_temp.throws($q$insert into public.people (workspace_id, display_name, user_id) values (current_setting('t.ws')::uuid, 'Fake', 'cccccccc-0000-0000-0000-000000000003')$q$, 'permission denied');
 
+-- Soft-removing an external person: owner can, members cannot
+select pg_temp.act_as('bbbbbbbb-0000-0000-0000-000000000002');
+do $$
+declare n integer;
+begin
+  update public.people set is_active = false where user_id is null;
+  get diagnostics n = row_count;
+  perform pg_temp.check(n = 0, 'member cannot deactivate external people');
+end $$;
+select pg_temp.act_as('aaaaaaaa-0000-0000-0000-000000000001');
+update public.people set is_active = false where user_id is null;
+select pg_temp.check((select count(*) from public.people where user_id is null and is_active) = 0, 'owner deactivates external person');
+select pg_temp.check((select count(*) from public.people where user_id is null) = 1, 'external person row is kept');
+
 -- 9. Removing members
 select pg_temp.throws($q$select public.remove_member(current_setting('t.ws')::uuid, 'aaaaaaaa-0000-0000-0000-000000000001')$q$, 'last_owner');
 select public.remove_member(current_setting('t.ws')::uuid, 'bbbbbbbb-0000-0000-0000-000000000002');

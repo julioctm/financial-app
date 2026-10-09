@@ -35,6 +35,13 @@ export function SplitForm({
 
   function save() {
     setMessage(null);
+    if (!totalOk) {
+      setMessage({
+        ok: false,
+        text: `Os percentuais somam ${total.toFixed(2)}%, mas precisam somar exatamente 100%.`,
+      });
+      return;
+    }
     start(async () => {
       const res = await saveSplit(
         workspaceId,
@@ -76,15 +83,16 @@ export function SplitForm({
       <p className={`text-sm ${totalOk ? 'text-green-700' : 'text-red-600'}`}>
         Total: {total.toFixed(2)}%
       </p>
+      {rows.length === 1 && (
+        <p className="text-sm text-gray-600">
+          Com um único membro o rateio é 100%. Convide alguém para dividir.
+        </p>
+      )}
       <p className="text-sm text-gray-600">
         Alterar o rateio não muda lançamentos já feitos, só os próximos.
       </p>
       {canEdit && (
-        <button
-          onClick={save}
-          disabled={pending || !totalOk}
-          className="btn btn-primary"
-        >
+        <button onClick={save} disabled={pending} className="btn btn-primary">
           {pending ? 'Salvando…' : 'Salvar rateio'}
         </button>
       )}

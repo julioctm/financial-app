@@ -119,6 +119,22 @@ export async function addExternalPerson(
   return { ok: true };
 }
 
+export async function removeExternalPerson(
+  workspaceId: string,
+  personId: string,
+): Promise<ActionResult> {
+  // Soft removal: the person stays for historical entries but disappears from the options.
+  const { error } = await createClient()
+    .from('people')
+    .update({ is_active: false })
+    .eq('id', personId)
+    .eq('workspace_id', workspaceId)
+    .is('user_id', null);
+  if (error) return { ok: false, error: friendlyError(error.message) };
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
 export async function renameMe(
   workspaceId: string,
   name: string,

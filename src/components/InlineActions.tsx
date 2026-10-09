@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 
 import {
   addExternalPerson,
+  removeExternalPerson,
   removeMember,
   renameMe,
 } from '@/app/actions/workspace';
@@ -121,5 +122,41 @@ export function RenameMeForm({
       {saved && <p className="text-sm text-green-700">Nome atualizado.</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
+  );
+}
+
+export function RemoveExternalButton({
+  workspaceId,
+  personId,
+  name,
+}: {
+  workspaceId: string;
+  personId: string;
+  name: string;
+}) {
+  const { error, pending, setError, start } = useAction();
+  return (
+    <span>
+      <button
+        disabled={pending}
+        onClick={() => {
+          if (
+            !confirm(
+              `Remover ${name}? Lançamentos antigos continuam com o nome dela, mas ela some das opções novas.`,
+            )
+          )
+            return;
+          setError(null);
+          start(async () => {
+            const res = await removeExternalPerson(workspaceId, personId);
+            if (!res.ok) setError(res.error);
+          });
+        }}
+        className="text-sm text-red-600 hover:underline"
+      >
+        Remover
+      </button>
+      {error && <span className="ml-2 text-sm text-red-600">{error}</span>}
+    </span>
   );
 }
