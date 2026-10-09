@@ -62,3 +62,8 @@ Authentication > Email Templates. O link padrão usa PKCE e só funciona no mesm
 - Mudanças de schema: criar migration em `supabase/migrations/`, aplicar no dev, testar e só então aplicar no prod.
 - Cada projeto Supabase precisa ter: migration aplicada, Site URL e Redirect URLs próprios, os dois templates de e-mail (seção 4) e SMTP configurado.
 - Fluxo de Git: feature branch curta -> PR (CI + preview da Vercel) -> merge na `main` -> deploy de produção.
+
+## 6. Migrations e testes de banco
+- Migrations ficam em `supabase/migrations/` (ordem alfabética = ordem de aplicação). Sem o Supabase CLI, aplique cada arquivo novo no **SQL Editor** do projeto (dev primeiro, prod depois de validado).
+- `npm run test:db` aplica todas as migrations num Postgres em memória (PGlite, sem Docker) e roda `supabase/tests/*.sql` (RLS e funções). Roda também no CI.
+- Os mesmos testes podem ser colados no SQL Editor do **dev** (rodam em transação e terminam em `rollback`); o resultado esperado é `ALL TESTS PASSED`.
