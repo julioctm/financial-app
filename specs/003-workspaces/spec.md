@@ -1,6 +1,6 @@
 # Workspaces Compartilhados
 
-**Status:** Approved
+**Status:** Implemented
 **Spec ID:** 003-workspaces
 **Autor:**
 **Data:** 2026-10-09
