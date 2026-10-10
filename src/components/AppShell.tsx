@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import {
   IconHome2,
   IconLayoutDashboard,
+  IconListDetails,
   IconLogout,
   IconMenu2,
   IconSettings,
@@ -20,6 +21,7 @@ type WorkspaceItem = { id: string; name: string };
 // Add modules here as they ship (Lançamentos, Orçamento, ...).
 const NAV = [
   { href: '/dashboard', label: 'Visão geral', Icon: IconLayoutDashboard },
+  { href: '/cadastros', label: 'Cadastros', Icon: IconListDetails },
   { href: '/settings', label: 'Configurações', Icon: IconSettings },
 ];
 
