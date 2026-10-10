@@ -1,4 +1,7 @@
 import { acceptInvite } from '@/app/actions/workspace';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FormMessage } from '@/components/ui/field';
 import { friendlyError } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
@@ -25,35 +28,32 @@ export default async function InvitePage({
 
   const status = preview?.status ?? 'invalid';
   const error = searchParams.error ?? (status === 'valid' ? null : status);
+  const errorText = error
+    ? friendlyError(`invite_${error.replace('invite_', '')}`)
+    : null;
 
   return (
-    <div className="card mx-auto max-w-md space-y-4">
-      <h1 className="text-2xl font-bold">Convite para workspace</h1>
+    <Card className="space-y-4">
+      <h1>Convite para workspace</h1>
       {status === 'valid' && preview ? (
         <>
           <p>
             Você foi convidado para o workspace{' '}
             <strong>{preview.workspace_name}</strong>.
           </p>
-          {error && (
-            <p role="alert" className="text-sm text-red-600">
-              {friendlyError(`invite_${error.replace('invite_', '')}`)}
-            </p>
-          )}
+          {errorText && <FormMessage>{errorText}</FormMessage>}
           <form action={acceptInvite}>
             <input type="hidden" name="token" value={token} />
-            <button className="btn btn-primary w-full">
+            <Button type="submit" className="w-full">
               {preview.already_member
                 ? 'Abrir workspace'
                 : 'Entrar no workspace'}
-            </button>
+            </Button>
           </form>
         </>
       ) : (
-        <p role="alert" className="text-red-600">
-          {friendlyError(`invite_${status.replace('invite_', '')}`)}
-        </p>
+        <FormMessage>{errorText}</FormMessage>
       )}
-    </div>
+    </Card>
   );
 }

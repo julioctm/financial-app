@@ -1,25 +1,30 @@
+const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#1d4ed8",
-          700: "#1e40af",
-          800: "#172554",
-          900: "#0f172a",
-        },
+      fontFamily: {
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
+      colors: {
+        canvas: token('canvas'),
+        surface: token('surface'),
+        line: { DEFAULT: token('line'), strong: token('line-strong') },
+        ink: token('ink'),
+        muted: token('muted'),
+        accent: {
+          DEFAULT: token('accent'),
+          hover: token('accent-hover'),
+          tint: token('accent-tint'),
+          ink: token('accent-ink'),
+        },
+        positive: token('positive'),
+        negative: { DEFAULT: token('negative'), tint: token('negative-tint') },
+      },
+      borderRadius: { xl: '0.75rem' },
     },
   },
   plugins: [],
-}
+};

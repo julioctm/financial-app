@@ -2,67 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    "Roboto",
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+/* Design tokens as RGB triplets so Tailwind opacity modifiers work.
+   A dark theme can override these under [data-theme='dark'] later. */
+:root {
+  --canvas: 251 248 244;
+  --surface: 255 255 255;
+  --line: 238 232 224;
+  --line-strong: 224 215 204;
+  --ink: 44 39 35;
+  --muted: 112 102 92;
+  --accent: 232 133 74;
+  --accent-hover: 222 118 55;
+  --accent-tint: 252 238 226;
+  --accent-ink: 143 74 30;
+  --positive: 59 115 85;
+  --negative: 169 68 52;
+  --negative-tint: 251 236 233;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.5rem;
-  font-weight: 600;
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.875rem;
-}
-
-.btn-primary {
-  background-color: #1d4ed8;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #1e40af;
-}
-
-.btn-primary:focus {
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.5);
-}
-
-.btn-secondary {
-  background-color: #e2e8f0;
-  color: #1e293b;
-}
-
-.btn-secondary:hover {
-  background-color: #cbd5e1;
-}
-
-.card {
-  background-color: white;
-  border-radius: 0.75rem;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    0 1px 2px rgba(0, 0, 0, 0.06);
-  padding: 1.5rem;
-  transition: box-shadow 0.2s ease;
-}
-
-.card:hover {
-  box-shadow:
-    0 4px 6px rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.06);
+@layer base {
+  body {
+    @apply bg-canvas font-sans text-sm text-ink antialiased;
+  }
+  h1 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  h2 {
+    @apply text-base font-semibold;
+  }
 }
