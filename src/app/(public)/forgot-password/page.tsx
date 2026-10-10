@@ -1,7 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FormMessage, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 
 export default function ForgotPasswordPage() {
@@ -12,8 +16,8 @@ export default function ForgotPasswordPage() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    const email = String(new FormData(e.currentTarget).get('email'));
     setError(null);
+    const email = String(new FormData(e.currentTarget).get('email'));
     const { error } = await createClient().auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
@@ -30,33 +34,36 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="card mx-auto max-w-sm">
-        <p>
+      <Card className="space-y-2">
+        <h1>Verifique seu e-mail</h1>
+        <p className="text-muted">
           Se o e-mail estiver cadastrado, você receberá um link para redefinir a
           senha.
         </p>
-      </div>
+        <Link href="/login" className="text-sm text-accent-ink hover:underline">
+          Voltar para o login
+        </Link>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="card mx-auto max-w-sm space-y-4">
-      <h1 className="text-2xl font-bold">Redefinir senha</h1>
-      <input
-        name="email"
-        type="email"
-        required
-        placeholder="E-mail"
-        className="w-full rounded border p-2"
-      />
-      {error && (
-        <p role="alert" className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
-      <button disabled={loading} className="btn btn-primary w-full">
-        Enviar link
-      </button>
-    </form>
+    <Card>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <h1>Redefinir senha</h1>
+        <Input
+          name="email"
+          type="email"
+          required
+          placeholder="E-mail"
+          aria-label="E-mail"
+          autoComplete="email"
+        />
+        {error && <FormMessage>{error}</FormMessage>}
+        <Button type="submit" disabled={loading} className="w-full">
+          {loading ? 'Enviando…' : 'Enviar link'}
+        </Button>
+      </form>
+    </Card>
   );
 }

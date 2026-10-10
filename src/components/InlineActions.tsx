@@ -8,6 +8,8 @@ import {
   removeMember,
   renameMe,
 } from '@/app/actions/workspace';
+import { Button } from '@/components/ui/button';
+import { FormMessage, Input } from '@/components/ui/field';
 
 function useAction() {
   const [error, setError] = useState<string | null>(null);
@@ -28,36 +30,28 @@ function ConfirmRemove({
   const [asking, setAsking] = useState(false);
   if (!asking) {
     return (
-      <button
-        type="button"
-        onClick={() => setAsking(true)}
-        className="text-sm text-red-600 hover:underline"
-      >
+      <Button variant="danger" size="sm" onClick={() => setAsking(true)}>
         Remover
-      </button>
+      </Button>
     );
   }
   return (
-    <span className="inline-flex items-center gap-2 text-sm">
-      <span className="text-gray-600">{message}</span>
-      <button
-        type="button"
+    <span className="inline-flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-muted">{message}</span>
+      <Button
+        variant="danger"
+        size="sm"
         disabled={pending}
         onClick={() => {
           setAsking(false);
           onConfirm();
         }}
-        className="font-semibold text-red-600 hover:underline"
       >
         Confirmar
-      </button>
-      <button
-        type="button"
-        onClick={() => setAsking(false)}
-        className="text-gray-600 hover:underline"
-      >
+      </Button>
+      <Button variant="ghost" size="sm" onClick={() => setAsking(false)}>
         Cancelar
-      </button>
+      </Button>
     </span>
   );
 }
@@ -73,7 +67,7 @@ export function RemoveMemberButton({
 }) {
   const { error, pending, setError, start } = useAction();
   return (
-    <span>
+    <span className="inline-flex flex-wrap items-center gap-2">
       <ConfirmRemove
         pending={pending}
         message={`Remover ${name}? O histórico é mantido.`}
@@ -85,7 +79,35 @@ export function RemoveMemberButton({
           });
         }}
       />
-      {error && <span className="ml-2 text-sm text-red-600">{error}</span>}
+      {error && <FormMessage>{error}</FormMessage>}
+    </span>
+  );
+}
+
+export function RemoveExternalButton({
+  workspaceId,
+  personId,
+  name,
+}: {
+  workspaceId: string;
+  personId: string;
+  name: string;
+}) {
+  const { error, pending, setError, start } = useAction();
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <ConfirmRemove
+        pending={pending}
+        message={`Remover ${name}?`}
+        onConfirm={() => {
+          setError(null);
+          start(async () => {
+            const res = await removeExternalPerson(workspaceId, personId);
+            if (!res.ok) setError(res.error);
+          });
+        }}
+      />
+      {error && <FormMessage>{error}</FormMessage>}
     </span>
   );
 }
@@ -107,18 +129,18 @@ export function AddExternalForm({ workspaceId }: { workspaceId: string }) {
           });
         }}
       >
-        <input
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={80}
-          placeholder="Nome da pessoa (sem login)"
-          className="w-full rounded border p-2"
+          placeholder="Nome da pessoa"
+          aria-label="Nome da pessoa sem login"
         />
-        <button disabled={pending} className="btn btn-secondary">
+        <Button type="submit" variant="secondary" disabled={pending}>
           Adicionar
-        </button>
+        </Button>
       </form>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <FormMessage>{error}</FormMessage>}
     </div>
   );
 }
@@ -148,46 +170,18 @@ export function RenameMeForm({
           });
         }}
       >
-        <input
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={80}
-          className="w-full rounded border p-2"
+          aria-label="Seu nome neste workspace"
         />
-        <button disabled={pending} className="btn btn-secondary">
+        <Button type="submit" variant="secondary" disabled={pending}>
           Salvar
-        </button>
+        </Button>
       </form>
-      {saved && <p className="text-sm text-green-700">Nome atualizado.</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {saved && <FormMessage kind="success">Nome atualizado.</FormMessage>}
+      {error && <FormMessage>{error}</FormMessage>}
     </div>
-  );
-}
-
-export function RemoveExternalButton({
-  workspaceId,
-  personId,
-  name,
-}: {
-  workspaceId: string;
-  personId: string;
-  name: string;
-}) {
-  const { error, pending, setError, start } = useAction();
-  return (
-    <span>
-      <ConfirmRemove
-        pending={pending}
-        message={`Remover ${name}?`}
-        onConfirm={() => {
-          setError(null);
-          start(async () => {
-            const res = await removeExternalPerson(workspaceId, personId);
-            if (!res.ok) setError(res.error);
-          });
-        }}
-      />
-      {error && <span className="ml-2 text-sm text-red-600">{error}</span>}
-    </span>
   );
 }

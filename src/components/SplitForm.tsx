@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react';
 
 import { saveSplit } from '@/app/actions/workspace';
+import { Button } from '@/components/ui/button';
+import { FormMessage, Input } from '@/components/ui/field';
 
 type Row = { person_id: string; name: string; percent: number };
 
@@ -67,42 +69,40 @@ export function SplitForm({
         >
           <span>{r.name}</span>
           <span className="flex items-center gap-1">
-            <input
+            <Input
               inputMode="decimal"
               disabled={!canEdit}
               value={values[r.person_id]}
+              aria-label={`Percentual de ${r.name}`}
               onChange={(e) =>
                 setValues((v) => ({ ...v, [r.person_id]: e.target.value }))
               }
-              className="w-24 rounded border p-2 text-right"
+              className="w-24 text-right"
             />
             %
           </span>
         </label>
       ))}
-      <p className={`text-sm ${totalOk ? 'text-green-700' : 'text-red-600'}`}>
+      <p className={`text-sm ${totalOk ? 'text-positive' : 'text-negative'}`}>
         Total: {total.toFixed(2)}%
       </p>
       {rows.length === 1 && (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           Com um único membro o rateio é 100%. Convide alguém para dividir.
         </p>
       )}
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-muted">
         Alterar o rateio não muda lançamentos já feitos, só os próximos.
       </p>
       {canEdit && (
-        <button onClick={save} disabled={pending} className="btn btn-primary">
+        <Button onClick={save} disabled={pending}>
           {pending ? 'Salvando…' : 'Salvar rateio'}
-        </button>
+        </Button>
       )}
       {message && (
-        <p
-          role={message.ok ? 'status' : 'alert'}
-          className={`text-sm ${message.ok ? 'text-green-700' : 'text-red-600'}`}
-        >
+        <FormMessage kind={message.ok ? 'success' : 'error'}>
           {message.text}
-        </p>
+        </FormMessage>
       )}
     </div>
   );
