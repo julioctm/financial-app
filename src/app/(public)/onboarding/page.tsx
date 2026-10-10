@@ -4,6 +4,7 @@ import { createWorkspace } from '@/app/actions/workspace';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormMessage, Input } from '@/components/ui/field';
+import { requireProfile } from '@/lib/profile';
 import { getWorkspaces } from '@/lib/workspace';
 
 export default async function OnboardingPage({
@@ -11,6 +12,7 @@ export default async function OnboardingPage({
 }: {
   searchParams: { error?: string };
 }) {
+  await requireProfile('/onboarding');
   if ((await getWorkspaces()).length > 0) redirect('/dashboard');
 
   return (

@@ -29,11 +29,13 @@ export function AppShell({
   workspaces,
   activeId,
   email,
+  name,
   children,
 }: {
   workspaces: WorkspaceItem[];
   activeId: string;
   email: string;
+  name: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -142,7 +144,18 @@ export function AppShell({
         </nav>
 
         <div className="border-t border-line pt-3">
-          <p className="truncate px-3 pb-2 text-xs text-muted">{email}</p>
+          <Link
+            href="/perfil"
+            aria-current={pathname.startsWith('/perfil') ? 'page' : undefined}
+            className="mb-1 block rounded-lg px-3 py-2 transition-colors hover:bg-line/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          >
+            <span className="block truncate text-sm font-medium">
+              {name || email}
+            </span>
+            {name && (
+              <span className="block truncate text-xs text-muted">{email}</span>
+            )}
+          </Link>
           <form action="/auth/signout" method="post">
             <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-line/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60">
               <IconLogout size={20} aria-hidden="true" />

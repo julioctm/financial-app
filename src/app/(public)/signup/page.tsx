@@ -26,7 +26,13 @@ export default function SignupPage() {
     const { data, error } = await createClient().auth.signUp({
       email: String(form.get('email')),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          first_name: String(form.get('first_name')).trim(),
+          last_name: String(form.get('last_name')).trim(),
+        },
+      },
     });
     setLoading(false);
     if (error) {
@@ -53,6 +59,23 @@ export default function SignupPage() {
     <Card>
       <form onSubmit={onSubmit} className="space-y-4">
         <h1>Criar conta</h1>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            name="first_name"
+            required
+            maxLength={40}
+            placeholder="Nome"
+            aria-label="Nome"
+            autoComplete="given-name"
+          />
+          <Input
+            name="last_name"
+            maxLength={60}
+            placeholder="Sobrenome"
+            aria-label="Sobrenome"
+            autoComplete="family-name"
+          />
+        </div>
         <Input
           name="email"
           type="email"
