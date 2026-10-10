@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormMessage } from '@/components/ui/field';
 import { friendlyError } from '@/lib/errors';
+import { requireProfile } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function InvitePage({
@@ -13,6 +14,7 @@ export default async function InvitePage({
   searchParams: { error?: string };
 }) {
   const token = decodeURIComponent(params.token);
+  await requireProfile(`/convite/${params.token}`);
   const { data } = await createClient().rpc('get_invite_preview', {
     p_token: token,
   });
