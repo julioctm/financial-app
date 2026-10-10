@@ -31,3 +31,17 @@
     @apply text-base font-semibold;
   }
 }
+
+/* react-datasheet-grid theming to match the app palette */
+.tx-grid .dsg-container {
+  --dsg-border-color: rgb(var(--line));
+  --dsg-selection-border-color: rgb(var(--accent));
+  --dsg-selection-background-color: rgb(var(--accent) / 0.08);
+  --dsg-header-text-color: rgb(var(--muted));
+  --dsg-header-active-text-color: rgb(var(--ink));
+  --dsg-cell-background-color: rgb(var(--surface));
+  --dsg-cell-disabled-background-color: rgb(var(--canvas));
+  font-size: 0.8125rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
