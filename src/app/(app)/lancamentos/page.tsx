@@ -57,7 +57,7 @@ export default async function LancamentosPage({
         .order('name'),
       supabase
         .from('accounts')
-        .select('id, name, closing_day, archived_at')
+        .select('id, name, kind, closing_day, archived_at')
         .eq('workspace_id', ws)
         .order('name'),
       supabase
@@ -119,6 +119,7 @@ export default async function LancamentosPage({
         id: a.id as string,
         name: a.name as string,
         closing_day: (a.closing_day as number | null) ?? null,
+        kind: a.kind as AccountOption['kind'],
         archived: a.archived_at != null,
       }))}
       people={peopleOptions}

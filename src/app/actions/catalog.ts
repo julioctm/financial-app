@@ -40,15 +40,17 @@ export async function createCatalogItem(
   table: CatalogTable,
   workspaceId: string,
   values: Values,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ id: string }>> {
   const row = clean(table, values);
   if (!row.name) return { ok: false, error: 'Informe um nome.' };
-  const { error } = await createClient()
+  const { data, error } = await createClient()
     .from(table)
-    .insert({ workspace_id: workspaceId, ...row });
-  if (error) return { ok: false, error: dbError(error.code) };
+    .insert({ workspace_id: workspaceId, ...row })
+    .select('id')
+    .single();
+  if (error || !data) return { ok: false, error: dbError(error?.code) };
   revalidatePath('/cadastros');
-  return { ok: true };
+  return { ok: true, id: (data as { id: string }).id };
 }
 
 export async function updateCatalogItem(

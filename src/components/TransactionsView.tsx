@@ -237,7 +237,7 @@ export function TransactionsView({
           'account_id',
           selectColumn(opt(accounts), true) as Column,
         ),
-        title: 'Conta',
+        title: 'Conta / cartão',
         minWidth: 130,
       },
       {
@@ -453,7 +453,7 @@ export function TransactionsView({
           value={accountFilter}
           onChange={(e) => setAccountFilter(e.target.value)}
         >
-          <option value="">Todas as contas</option>
+          <option value="">Todas as contas e cartões</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -564,6 +564,7 @@ export function TransactionsView({
         workspaceId={workspaceId}
         currentMonth={month}
         ledger={ledger}
+        categories={categories}
         envelopes={envelopes}
         accounts={accounts}
         people={people}

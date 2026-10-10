@@ -23,6 +23,9 @@ export type LedgerOption = {
   archived: boolean;
 };
 export type NamedOption = { id: string; name: string; archived: boolean };
-export type AccountOption = NamedOption & { closing_day: number | null };
+export type AccountOption = NamedOption & {
+  closing_day: number | null;
+  kind: 'credit_card' | 'checking' | 'cash' | 'other';
+};
 export type PersonOption = { id: string; name: string; active: boolean };
 export type SplitDefault = { person_id: string; percent: number };
