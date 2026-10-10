@@ -39,7 +39,8 @@ function today(): string {
 
 type QuickKind = 'account' | 'ledger' | 'envelope';
 
-// Small inline form to create a catalog item without leaving the dialog.
+// Small inline panel to create a catalog item without leaving the dialog. It is not a
+// <form>: it sits inside the transaction form and nested forms are invalid HTML.
 function QuickCreate({
   kind,
   workspaceId,
@@ -61,6 +62,14 @@ function QuickCreate({
   }) => void;
   onCancel: () => void;
 }) {
+  const [values, setValues] = useState<Record<string, string>>({
+    name: '',
+    kind: kind === 'account' ? 'credit_card' : 'expense',
+    holder_person_id: '',
+    closing_day: '',
+    category_id: '',
+    default_envelope_id: '',
+  });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const table =
@@ -75,113 +84,143 @@ function QuickCreate({
       : kind === 'ledger'
         ? 'Novo título'
         : 'Novo tipo';
+  const set = (key: string) => (e: { target: { value: string } }) =>
+    setValues((v) => ({ ...v, [key]: e.target.value }));
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    e.stopPropagation(); // never submit the outer transaction form
-    const values = Object.fromEntries(
-      Array.from(new FormData(e.currentTarget).entries()).map(([k, v]) => [
-        k,
-        String(v),
-      ]),
-    );
+  function create() {
+    const name = values.name.trim();
+    if (!name) return setError('Informe um nome.');
+    if (kind === 'account' && !values.holder_person_id)
+      return setError('Informe quem é o dono da conta ou cartão.');
+    const day = values.closing_day.trim();
+    if (day && !(Number(day) >= 1 && Number(day) <= 31))
+      return setError('O dia de fechamento deve estar entre 1 e 31.');
     setError(null);
     start(async () => {
-      const res = await createCatalogItem(table, workspaceId, values);
+      const res = await createCatalogItem(table, workspaceId, {
+        ...values,
+        name,
+      });
       if (!res.ok) return setError(res.error);
-      onCreated({ id: res.id, name: values.name.trim(), values });
+      onCreated({ id: res.id, name, values });
     });
   }
 
   return (
-    <div className="space-y-3 rounded-lg bg-canvas p-3">
+    <div
+      className="space-y-3 rounded-lg bg-canvas p-3"
+      role="group"
+      aria-label={title}
+      onKeyDown={(e) => {
+        // Enter here creates the item; it must not submit the transaction form.
+        if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+          e.preventDefault();
+          create();
+        }
+      }}
+    >
       <p className="text-sm font-medium">{title}</p>
-      <form onSubmit={submit} className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-sm">
-            <span className="text-muted">Nome</span>
-            <Input name="name" required maxLength={80} autoFocus />
-          </label>
-          {kind === 'account' && (
-            <>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted">Tipo da conta</span>
-                <Select name="kind" defaultValue="credit_card">
-                  {ACCOUNT_KINDS.map((k) => (
-                    <option key={k.value} value={k.value}>
-                      {k.label}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="space-y-1 text-sm">
+          <span className="text-muted">Nome</span>
+          <Input
+            maxLength={80}
+            autoFocus
+            value={values.name}
+            onChange={set('name')}
+          />
+        </label>
+        {kind === 'account' && (
+          <>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted">Tipo da conta</span>
+              <Select value={values.kind} onChange={set('kind')}>
+                {ACCOUNT_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted">Dono (titular)</span>
+              <Select
+                value={values.holder_person_id}
+                onChange={set('holder_person_id')}
+              >
+                <option value="">Escolha o dono…</option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted">Dia de fechamento (opcional)</span>
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                value={values.closing_day}
+                onChange={set('closing_day')}
+              />
+            </label>
+          </>
+        )}
+        {kind === 'ledger' && (
+          <>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted">Natureza</span>
+              <Select value={values.kind} onChange={set('kind')}>
+                {LEDGER_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted">Categoria (opcional)</span>
+              <Select value={values.category_id} onChange={set('category_id')}>
+                <option value="">Nenhuma</option>
+                {categories
+                  .filter((c) => !c.archived)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
-                </Select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted">Dono (titular)</span>
-                <Select name="holder_person_id" required defaultValue="">
-                  <option value="">Escolha o dono…</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+              </Select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted">Tipo padrão (opcional)</span>
+              <Select
+                value={values.default_envelope_id}
+                onChange={set('default_envelope_id')}
+              >
+                <option value="">Nenhum</option>
+                {envelopes
+                  .filter((n) => !n.archived)
+                  .map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name}
                     </option>
                   ))}
-                </Select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted">Dia de fechamento (opcional)</span>
-                <Input name="closing_day" type="number" min={1} max={31} />
-              </label>
-            </>
-          )}
-          {kind === 'ledger' && (
-            <>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted">Natureza</span>
-                <Select name="kind" defaultValue="expense">
-                  {LEDGER_KINDS.map((k) => (
-                    <option key={k.value} value={k.value}>
-                      {k.label}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted">Categoria (opcional)</span>
-                <Select name="category_id" defaultValue="">
-                  <option value="">Nenhuma</option>
-                  {categories
-                    .filter((c) => !c.archived)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </Select>
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted">Tipo padrão (opcional)</span>
-                <Select name="default_envelope_id" defaultValue="">
-                  <option value="">Nenhum</option>
-                  {envelopes
-                    .filter((n) => !n.archived)
-                    .map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.name}
-                      </option>
-                    ))}
-                </Select>
-              </label>
-            </>
-          )}
-        </div>
-        {error && <FormMessage>{error}</FormMessage>}
-        <div className="flex gap-2">
-          <Button type="submit" size="sm" disabled={pending}>
-            Criar e usar
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onCancel}>
-            Cancelar
-          </Button>
-        </div>
-      </form>
+              </Select>
+            </label>
+          </>
+        )}
+      </div>
+      {error && <FormMessage>{error}</FormMessage>}
+      <div className="flex gap-2">
+        <Button size="sm" onClick={create} disabled={pending}>
+          {pending ? 'Criando…' : 'Criar e usar'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
     </div>
   );
 }
