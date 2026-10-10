@@ -43,6 +43,8 @@ export async function createCatalogItem(
 ): Promise<ActionResult<{ id: string }>> {
   const row = clean(table, values);
   if (!row.name) return { ok: false, error: 'Informe um nome.' };
+  if (table === 'accounts' && !row.holder_person_id)
+    return { ok: false, error: 'Informe quem é o dono da conta ou cartão.' };
   const { data, error } = await createClient()
     .from(table)
     .insert({ workspace_id: workspaceId, ...row })

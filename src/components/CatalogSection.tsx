@@ -20,6 +20,7 @@ export type FieldDef = {
   type: 'text' | 'number' | 'select';
   options?: { value: string; label: string }[]; // select: '' (none) is added automatically
   required?: boolean;
+  placeholder?: string; // select: shown as an empty first option (forces a choice when required)
   min?: number;
   max?: number;
 };
@@ -45,8 +46,14 @@ function Fields({
         <label key={f.key} className="space-y-1 text-sm">
           <span className="text-muted">{f.label}</span>
           {f.type === 'select' ? (
-            <Select name={f.key} defaultValue={values?.[f.key] ?? ''}>
-              {!f.required && <option value="">Nenhum</option>}
+            <Select
+              name={f.key}
+              required={f.required}
+              defaultValue={values?.[f.key] ?? ''}
+            >
+              {(f.placeholder || !f.required) && (
+                <option value="">{f.placeholder ?? 'Nenhum'}</option>
+              )}
               {f.options?.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}

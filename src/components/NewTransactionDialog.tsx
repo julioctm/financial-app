@@ -45,6 +45,7 @@ function QuickCreate({
   workspaceId,
   categories,
   envelopes,
+  people,
   onCreated,
   onCancel,
 }: {
@@ -52,6 +53,7 @@ function QuickCreate({
   workspaceId: string;
   categories: NamedOption[];
   envelopes: NamedOption[];
+  people: PersonOption[];
   onCreated: (item: {
     id: string;
     name: string;
@@ -108,6 +110,17 @@ function QuickCreate({
                   {ACCOUNT_KINDS.map((k) => (
                     <option key={k.value} value={k.value}>
                       {k.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-muted">Dono (titular)</span>
+                <Select name="holder_person_id" required defaultValue="">
+                  <option value="">Escolha o dono…</option>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
                     </option>
                   ))}
                 </Select>
@@ -419,6 +432,7 @@ export function NewTransactionDialog({
           workspaceId={workspaceId}
           categories={categories}
           envelopes={allEnvelopes}
+          people={activePeople}
           onCreated={(item) => onCreated(kind, item)}
           onCancel={() => setCreating(null)}
         />
