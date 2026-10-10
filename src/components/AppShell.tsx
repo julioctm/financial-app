@@ -10,6 +10,7 @@ import {
   IconLogout,
   IconMenu2,
   IconSettings,
+  IconTable,
   IconX,
 } from '@tabler/icons-react';
 
@@ -21,6 +22,7 @@ type WorkspaceItem = { id: string; name: string };
 // Add modules here as they ship (Lançamentos, Orçamento, ...).
 const NAV = [
   { href: '/dashboard', label: 'Visão geral', Icon: IconLayoutDashboard },
+  { href: '/lancamentos', label: 'Lançamentos', Icon: IconTable },
   { href: '/cadastros', label: 'Cadastros', Icon: IconListDetails },
   { href: '/settings', label: 'Configurações', Icon: IconSettings },
 ];
