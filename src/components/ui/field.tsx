@@ -1,4 +1,8 @@
-import { forwardRef, type InputHTMLAttributes } from 'react';
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type SelectHTMLAttributes,
+} from 'react';
 
 export const inputClass =
   'h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink ' +
@@ -10,6 +14,15 @@ export const Input = forwardRef<
   InputHTMLAttributes<HTMLInputElement>
 >(function Input({ className = '', ...rest }, ref) {
   return <input ref={ref} className={`${inputClass} ${className}`} {...rest} />;
+});
+
+export const Select = forwardRef<
+  HTMLSelectElement,
+  SelectHTMLAttributes<HTMLSelectElement>
+>(function Select({ className = '', ...rest }, ref) {
+  return (
+    <select ref={ref} className={`${inputClass} pr-8 ${className}`} {...rest} />
+  );
 });
 
 export function FormMessage({

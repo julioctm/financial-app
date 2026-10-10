@@ -18,20 +18,22 @@ function useAction() {
 }
 
 // Two-step inline confirmation (window.confirm is blocked in some browsers/webviews).
-function ConfirmRemove({
+export function ConfirmRemove({
   message,
   onConfirm,
   pending,
+  label = 'Remover',
 }: {
   message: string;
   onConfirm: () => void;
   pending: boolean;
+  label?: string;
 }) {
   const [asking, setAsking] = useState(false);
   if (!asking) {
     return (
       <Button variant="danger" size="sm" onClick={() => setAsking(true)}>
-        Remover
+        {label}
       </Button>
     );
   }
