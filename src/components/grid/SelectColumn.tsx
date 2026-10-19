@@ -3,6 +3,8 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { CellProps, Column } from 'react-datasheet-grid';
 
+import { isUnmatched, UNMATCHED_PREFIX, unmatchedText } from '@/lib/drafts';
+
 export type Option = { value: string; label: string; archived?: boolean };
 
 type SelectData = { options: Option[]; allowEmpty: boolean };
@@ -16,6 +18,7 @@ function SelectCell({
   columnData,
 }: CellProps<string | null, SelectData>) {
   const ref = useRef<HTMLSelectElement>(null);
+  const unmatched = isUnmatched(rowData);
   const current = columnData.options.find((o) => o.value === rowData);
 
   useLayoutEffect(() => {
@@ -34,12 +37,15 @@ function SelectCell({
 
   return (
     <div className="relative flex h-full w-full items-center px-2">
-      <span className={`truncate ${current ? '' : 'text-muted'}`}>
-        {current?.label ?? ''}
+      <span
+        className={`truncate ${unmatched ? 'text-negative' : current ? '' : 'text-muted'}`}
+        title={unmatched ? 'Não encontrado nos cadastros' : undefined}
+      >
+        {unmatched ? `⚠ ${unmatchedText(rowData)}` : (current?.label ?? '')}
       </span>
       <select
         ref={ref}
-        value={rowData ?? ''}
+        value={unmatched ? '' : (rowData ?? '')}
         tabIndex={-1}
         aria-label="Escolher valor"
         onChange={(e) => {
@@ -86,15 +92,17 @@ export function selectColumn(
     disableKeys: true,
     keepFocus: true,
     deleteValue: () => null,
-    copyValue: ({ rowData }) => labelOf(rowData),
-    // Pasting matches by label (case-insensitive); unknown text leaves the cell as it was.
+    copyValue: ({ rowData }) =>
+      isUnmatched(rowData) ? unmatchedText(rowData) : labelOf(rowData),
+    // Pasting matches by label (case-insensitive). Text that matches nothing is kept as an
+    // "unmatched" marker so the grid can say what was not found instead of dropping it.
     pasteValue: ({ rowData, value }) => {
       const text = value.trim().toLowerCase();
       if (!text) return allowEmpty ? null : rowData;
-      return (
-        options.find((o) => !o.archived && o.label.toLowerCase() === text)
-          ?.value ?? rowData
+      const found = options.find(
+        (o) => !o.archived && o.label.toLowerCase() === text,
       );
+      return found?.value ?? `${UNMATCHED_PREFIX}${value.trim()}`;
     },
   };
 }

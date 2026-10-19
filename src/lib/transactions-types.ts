@@ -30,3 +30,21 @@ export type AccountOption = NamedOption & {
 };
 export type PersonOption = { id: string; name: string; active: boolean };
 export type SplitDefault = { person_id: string; percent: number };
+
+// A row of the grid: either a saved transaction or a client-only draft whose required
+// fields may still be empty.
+export type GridRow = Omit<
+  TxRow,
+  | 'purchase_date'
+  | 'payment_month'
+  | 'ledger_account_id'
+  | 'owner_person_id'
+  | 'amount_cents'
+> & {
+  purchase_date: string | null;
+  payment_month: string | null;
+  ledger_account_id: string | null;
+  owner_person_id: string | null;
+  amount_cents: number | null;
+  draft?: boolean;
+};

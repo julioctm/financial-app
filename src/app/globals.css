@@ -45,3 +45,8 @@
   border-radius: 0.75rem;
   overflow: hidden;
 }
+
+/* Drafts: new rows not saved yet */
+.tx-grid .dsg-draft-row {
+  --dsg-cell-background-color: rgb(var(--accent-tint) / 0.55);
+}

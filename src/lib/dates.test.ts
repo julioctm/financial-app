@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatDateBr,
   formatPaymentMonth,
   isMonthKey,
   monthLabel,
+  parseDateInput,
   parsePaymentMonth,
   shiftMonth,
   suggestPaymentMonth,
@@ -90,5 +92,49 @@ describe('suggestPaymentMonth', () => {
 
   it('vira o ano em dezembro', () => {
     expect(suggestPaymentMonth('2026-12-20', 10)).toBe('2027-01-01');
+  });
+});
+
+describe('parseDateInput', () => {
+  it.each([
+    ['19/10/2026', '2026-10-19'],
+    ['1/2/2026', '2026-02-01'],
+    ['19/10/26', '2026-10-19'],
+    ['19-10-2026', '2026-10-19'],
+    ['19.10.2026', '2026-10-19'],
+    ['2026-10-19', '2026-10-19'],
+    ['  05/03/2027 ', '2027-03-05'],
+    ['29/02/2028', '2028-02-29'], // ano bissexto
+  ])('interpreta %j como %s', (input, expected) => {
+    expect(parseDateInput(input)).toBe(expected);
+  });
+
+  it.each([
+    '',
+    '31/02/2026',
+    '29/02/2027',
+    '00/10/2026',
+    '10/13/2026',
+    '2026',
+    'abc',
+    '1/1/1800',
+    null,
+    undefined,
+  ])(
+    'devolve null para %j (data inexistente ou formato desconhecido)',
+    (input) => {
+      expect(parseDateInput(input as string | null | undefined)).toBeNull();
+    },
+  );
+});
+
+describe('formatDateBr', () => {
+  it('mostra dia/mês/ano', () => {
+    expect(formatDateBr('2026-10-19')).toBe('19/10/2026');
+    expect(formatDateBr(null)).toBe('');
+  });
+
+  it('é o inverso de parseDateInput', () => {
+    expect(parseDateInput(formatDateBr('2026-01-05'))).toBe('2026-01-05');
   });
 });

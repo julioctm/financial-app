@@ -3,10 +3,12 @@ import { expect, test } from '@playwright/test';
 import {
   addExternalPerson,
   addTransaction,
+  draftCell,
   createUser,
   createWorkspace,
   gridRows,
   login,
+  pasteInto,
   splitRows,
   waitForGrid,
 } from './helpers';
@@ -236,4 +238,93 @@ test('excluir "toda a compra" remove todos os donos de uma vez', async ({
   await page.getByRole('button', { name: 'Excluir' }).click();
   await page.getByRole('button', { name: 'Confirmar' }).click();
   await expect(page.getByText('Nenhum lançamento neste mês')).toBeVisible();
+});
+
+test('sempre existe uma linha em branco no fim, mesmo sem lançamentos', async ({
+  page,
+}) => {
+  await expect(page.getByText('Nenhum lançamento neste mês')).toBeVisible();
+  await expect(page.locator('.dsg-draft-row')).toHaveCount(1);
+});
+
+test('colar linhas do Sheets cria um lançamento por linha (data, valor e sinal em pt-BR)', async ({
+  page,
+}) => {
+  // Cria a conta e o título "Mercado" (e uma linha) pelo modal; depois cola mais três.
+  await addTransaction(page, { description: 'base', amount: '1,00' });
+  await expect.poll(async () => (await gridRows(page)).length).toBe(1);
+
+  const blank = () => draftCell(page, 1); // começa na coluna Data
+  await pasteInto(
+    page,
+    blank(),
+    [
+      '19/10/2026\t10/2026\tcolado um\tMercado\tR$ 1.234,56\tCartão E2E\t\tAna',
+      '20/10/2026\t10/2026\tcolado dois\tmercado\t-50,25\t\t\tAna',
+      '21/10/2026\t10/2026\tcolado três\tMercado\t10\t\t\tAna',
+    ].join('\n'),
+  );
+
+  await expect.poll(async () => (await gridRows(page)).length).toBe(4);
+  const rows = await gridRows(page);
+  const byDesc = (d: string) => rows.find((r) => r.includes(d));
+  // Colunas: gutter, Data, Pagamento, Descrição, Título, Valor, Conta, Tipo, Dono, ...
+  expect(byDesc('colado um')?.slice(1, 9)).toEqual(
+    [
+      '2026-10-19',
+      '10/2026',
+      'colado um',
+      'Mercado',
+      '-1.234,56',
+      'Cartão E2E',
+      '',
+      'Ana',
+    ].map((v) => (v === '2026-10-19' ? '19/10/2026' : v)),
+  );
+  // Despesa digitada com sinal positivo continua sendo saída; título casa sem diferenciar maiúsculas.
+  expect(byDesc('colado três')).toContain('-10,00');
+  expect(byDesc('colado dois')).toContain('-50,25');
+  await expect(page.getByText(/linhas? incompletas?/)).toBeHidden();
+});
+
+test('título inexistente fica como rascunho, avisa e não cria nada', async ({
+  page,
+}) => {
+  await addTransaction(page, { description: 'base', amount: '1,00' });
+  await expect.poll(async () => (await gridRows(page)).length).toBe(1);
+
+  await pasteInto(
+    page,
+    draftCell(page, 3),
+    'tentativa\tMercadinho\t30,00\t\t\tAna',
+  );
+
+  await expect(page.getByText('1 linha incompleta')).toBeVisible();
+  await expect(
+    page.getByText(/Título “Mercadinho” não encontrado/).first(),
+  ).toBeVisible();
+  await page.waitForTimeout(800);
+  expect((await gridRows(page)).length).toBe(1); // nada novo foi salvo
+
+  // Corrigir o título na própria linha salva sozinho.
+  await pasteInto(page, draftCell(page, 4, 'first'), 'Mercado');
+  await expect.poll(async () => (await gridRows(page)).length).toBe(2);
+  await expect(page.getByText(/linhas? incompletas?/)).toBeHidden();
+});
+
+test('linha incompleta mostra o que falta e pode ser descartada', async ({
+  page,
+}) => {
+  await addTransaction(page, { description: 'base', amount: '1,00' });
+  await expect.poll(async () => (await gridRows(page)).length).toBe(1);
+
+  await pasteInto(page, draftCell(page, 3), 'só descrição e valor');
+  await expect(page.getByText('1 linha incompleta')).toBeVisible();
+  await expect(
+    page.getByText(/falta o título, falta o dono, falta o valor/),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Descartar' }).click();
+  await expect(page.getByText(/linhas? incompletas?/)).toBeHidden();
+  expect((await gridRows(page)).length).toBe(1);
 });
