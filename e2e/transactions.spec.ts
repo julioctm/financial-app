@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 import {
+  addExternalPerson,
   addTransaction,
   createUser,
   createWorkspace,
   gridRows,
   login,
+  splitRows,
   waitForGrid,
 } from './helpers';
 
@@ -28,7 +30,8 @@ test('cria cadastros e um lançamento pelo modal, com dono e valor corretos', as
   expect(row).toContain('Mercado');
   expect(row).toContain('Cartão E2E');
   expect(row).toContain('-412,80');
-  expect(row).toContain('Ana 100%');
+  expect(row).toContain('Ana'); // Dono
+  expect(row).not.toContain('Ana 100%');
   await expect(page.locator('dl')).toContainText('412,80');
 });
 
@@ -157,4 +160,80 @@ test('editar depois de criar outro lançamento (sem recarregar) altera a linha c
   await expect
     .poll(async () => (await gridRows(page)).map((r) => r[3]))
     .toEqual(['primeiro editado', 'segundo']);
+});
+
+test('compra dividida gera uma linha por dono, com Divisão e Pagar para', async ({
+  page,
+}) => {
+  await addExternalPerson(page, 'Vó');
+  await page.goto('/lancamentos');
+  await waitForGrid(page);
+  await addTransaction(page, {
+    description: 'racha',
+    amount: '100,00',
+    split: { Ana: '65', Vó: '35' },
+    payTo: 'Ana',
+  });
+  await expect.poll(async () => (await gridRows(page)).length).toBe(2);
+
+  const rows = await splitRows(page);
+  const ana = rows.find((r) => r.owner === 'Ana');
+  const vo = rows.find((r) => r.owner === 'Vó');
+  // Ana advanced the money: her own row pays to nobody; Vó's row pays to Ana.
+  expect(ana).toMatchObject({ amount: '-65,00', split: '65%', payTo: '' });
+  expect(vo).toMatchObject({ amount: '-35,00', split: '35%', payTo: 'Ana' });
+  await expect(page.locator('dl')).toContainText('100,00');
+});
+
+test('parcelas com dois donos geram uma linha por dono em cada mês', async ({
+  page,
+}) => {
+  await addExternalPerson(page, 'Vó');
+  await page.goto('/lancamentos');
+  await waitForGrid(page);
+  await addTransaction(page, {
+    description: 'tv',
+    amount: '100,00',
+    installments: 2,
+    split: { Ana: '50', Vó: '50' },
+  });
+  await expect.poll(async () => (await gridRows(page)).length).toBe(2);
+  expect((await splitRows(page)).map((r) => r.amount).sort()).toEqual([
+    '-25,00',
+    '-25,00',
+  ]);
+
+  await page.getByRole('link', { name: 'Próximo mês' }).click();
+  await expect
+    .poll(async () => (await splitRows(page)).map((r) => r.description))
+    .toEqual(['tv (2/2)', 'tv (2/2)']);
+});
+
+test('excluir "toda a compra" remove todos os donos de uma vez', async ({
+  page,
+}) => {
+  await addExternalPerson(page, 'Vó');
+  await page.goto('/lancamentos');
+  await waitForGrid(page);
+  await addTransaction(page, {
+    description: 'dividido',
+    amount: '80,00',
+    split: { Ana: '50', Vó: '50' },
+  });
+  await expect.poll(async () => (await gridRows(page)).length).toBe(2);
+
+  const firstRowCell = () =>
+    page.locator('.dsg-row').nth(1).locator('.dsg-cell').nth(3);
+  await expect(async () => {
+    await firstRowCell().click();
+    await expect(page.getByText('1 selecionado(s)')).toBeVisible({
+      timeout: 1500,
+    });
+  }).toPass();
+  await page
+    .getByLabel('Escopo da exclusão')
+    .selectOption({ label: 'Toda a compra (todos os donos e parcelas)' });
+  await page.getByRole('button', { name: 'Excluir' }).click();
+  await page.getByRole('button', { name: 'Confirmar' }).click();
+  await expect(page.getByText('Nenhum lançamento neste mês')).toBeVisible();
 });

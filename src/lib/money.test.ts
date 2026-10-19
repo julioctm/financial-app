@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { editableMoney, formatMoney, parseMoney } from '@/lib/money';
+import {
+  editableMoney,
+  formatMoney,
+  formatPercent,
+  parseMoney,
+} from '@/lib/money';
 
 describe('parseMoney', () => {
   it.each([
@@ -58,5 +63,19 @@ describe('editableMoney', () => {
     expect(editableMoney(123456)).toBe('1234,56');
     expect(editableMoney(-5000)).toBe('-50,00');
     expect(editableMoney(null)).toBe('');
+  });
+});
+
+describe('formatPercent', () => {
+  it('mostra o percentual da divisão sem casas desnecessárias', () => {
+    expect(formatPercent(65)).toBe('65%');
+    expect(formatPercent(35)).toBe('35%');
+    expect(formatPercent(33.33)).toBe('33,33%');
+    expect(formatPercent(100)).toBe('100%');
+  });
+
+  it('fica vazio quando a linha não foi dividida', () => {
+    expect(formatPercent(null)).toBe('');
+    expect(formatPercent(undefined)).toBe('');
   });
 });

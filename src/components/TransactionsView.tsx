@@ -33,7 +33,12 @@ import {
   parsePaymentMonth,
   shiftMonth,
 } from '@/lib/dates';
-import { editableMoney, formatMoney, parseMoney } from '@/lib/money';
+import {
+  editableMoney,
+  formatMoney,
+  formatPercent,
+  parseMoney,
+} from '@/lib/money';
 import type {
   AccountOption,
   LedgerOption,
@@ -51,6 +56,7 @@ const FIELD_LABELS: Record<string, string> = {
   envelope_id: 'Tipo',
   account_id: 'Conta',
   pay_to_person_id: 'Pagar para',
+  owner_person_id: 'Dono',
   amount_cents: 'Valor',
 };
 const PATCH_FIELDS = [
@@ -61,8 +67,10 @@ const PATCH_FIELDS = [
   'envelope_id',
   'account_id',
   'pay_to_person_id',
+  'owner_person_id',
 ] as const;
 const REQUIRED = [
+  'owner_person_id',
   'purchase_date',
   'payment_month',
   'ledger_account_id',
@@ -253,6 +261,21 @@ export function TransactionsView({
         minWidth: 120,
       },
       {
+        ...keyColumn<TxRow, 'owner_person_id'>(
+          'owner_person_id',
+          selectColumn(
+            people.map((p) => ({
+              value: p.id,
+              label: p.name,
+              archived: !p.active,
+            })),
+            false,
+          ) as Column,
+        ),
+        title: 'Dono',
+        minWidth: 110,
+      },
+      {
         ...keyColumn<TxRow, 'pay_to_person_id'>(
           'pay_to_person_id',
           selectColumn(
@@ -268,14 +291,17 @@ export function TransactionsView({
         minWidth: 120,
       },
       {
-        id: 'shares',
-        title: 'Dono',
-        minWidth: 170,
+        id: 'split',
+        title: 'Divisão',
+        minWidth: 80,
         disabled: true,
         component: ({ rowData }: { rowData: TxRow }) => (
-          <span className="truncate px-2 text-muted">{rowData.shares}</span>
+          <span className="truncate px-2 text-muted">
+            {formatPercent(rowData.split_percent)}
+          </span>
         ),
-        copyValue: ({ rowData }: { rowData: TxRow }) => rowData.shares,
+        copyValue: ({ rowData }: { rowData: TxRow }) =>
+          formatPercent(rowData.split_percent),
       },
       {
         id: 'category',
@@ -390,7 +416,10 @@ export function TransactionsView({
   }
 
   const selectedRows = rows.filter((r) => selectedIds.includes(r.id));
-  const hasInstallments = selectedRows.some((r) => r.installment_group_id);
+  // Rows that belong to a larger purchase (installment plan or split between owners).
+  const hasInstallments = selectedRows.some(
+    (r) => r.installment_group_id || r.split_percent != null,
+  );
 
   async function removeSelected() {
     setDeleting(true);
@@ -499,7 +528,9 @@ export function TransactionsView({
       )}
       {prompt && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-accent-tint px-3 py-2 text-sm text-accent-ink">
-          <span>Aplicar essa alteração também às outras parcelas?</span>
+          <span>
+            Aplicar essa alteração também às outras parcelas desta linha?
+          </span>
           <Button
             size="sm"
             variant="secondary"
@@ -537,8 +568,12 @@ export function TransactionsView({
               }
             >
               <option value="single">Só as selecionadas</option>
-              <option value="following">Estas e as parcelas seguintes</option>
-              <option value="all">Todo o parcelamento</option>
+              <option value="following">
+                Estas e as parcelas seguintes (todos os donos)
+              </option>
+              <option value="all">
+                Toda a compra (todos os donos e parcelas)
+              </option>
             </Select>
           )}
           <ConfirmRemove
