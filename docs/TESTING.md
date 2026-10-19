@@ -1,7 +1,10 @@
 # Testes
 
+**Toda implementação vem com testes** (regra em [`../CLAUDE.md`](../CLAUDE.md)): unitário para lógica, SQL para banco, E2E para fluxos.
+
 | Camada | Comando | O que cobre | Precisa de |
 |---|---|---|---|
+| Unitário | `npm run test:unit` | Funções puras: valor, datas, erros (`src/**/*.test.ts`) | só Node |
 | Banco (SQL) | `npm run test:db` | RLS, rateio, parcelas, acerto, perfil | só Node (PGlite, em memória) |
 | Ponta a ponta | `npm run test:e2e` | Fluxos no navegador: login, workspace, convite, lançamentos | Docker + Supabase local |
 | Tipos e lint | `npm run typecheck` / `npm run lint` | Erros de tipo e estilo | só Node |
