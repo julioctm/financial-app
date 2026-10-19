@@ -135,10 +135,10 @@ export function TransactionsView({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(0);
   const [prompt, setPrompt] = useState<Prompt | null>(null);
-  const [selection, setSelection] = useState<{
-    from: number;
-    to: number;
-  } | null>(null);
+  // Selected row ids. The grid reports `null` when focus moves outside it (e.g. when the
+  // user clicks the Excluir button), so that is ignored: the selection stays until it is
+  // explicitly cleared, deleted, or the month changes.
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [q, setQ] = useState('');
   const [accountFilter, setAccountFilter] = useState('');
   const [ledgerFilter, setLedgerFilter] = useState('');
@@ -150,6 +150,7 @@ export function TransactionsView({
   if (seen !== initialRows) {
     setSeen(initialRows);
     setRows(initialRows);
+    setSelectedIds([]);
   }
 
   const filtered = useMemo(() => {
@@ -186,7 +187,7 @@ export function TransactionsView({
           isoDateColumn as Column,
         ),
         title: 'Data',
-        minWidth: 130,
+        minWidth: 110,
       },
       {
         ...keyColumn<TxRow, 'payment_month'>(
@@ -194,12 +195,12 @@ export function TransactionsView({
           monthColumn as Column,
         ),
         title: 'Pagamento',
-        minWidth: 105,
+        minWidth: 95,
       },
       {
         ...keyColumn<TxRow, 'description'>('description', textColumn as Column),
         title: 'Descrição',
-        minWidth: 220,
+        minWidth: 190,
         grow: 3,
       },
       {
@@ -208,29 +209,16 @@ export function TransactionsView({
           selectColumn(opt(ledger), false) as Column,
         ),
         title: 'Título',
-        minWidth: 150,
+        minWidth: 140,
         grow: 1,
       },
       {
-        ...keyColumn<TxRow, 'envelope_id'>(
-          'envelope_id',
-          selectColumn(opt(envelopes), true) as Column,
+        ...keyColumn<TxRow, 'amount_cents'>(
+          'amount_cents',
+          moneyColumn as Column,
         ),
-        title: 'Tipo',
-        minWidth: 120,
-      },
-      {
-        id: 'category',
-        title: 'Categoria',
+        title: 'Valor',
         minWidth: 110,
-        disabled: true,
-        component: ({ rowData }: { rowData: TxRow }) => (
-          <span className="truncate px-2 text-muted">
-            {categoryOf(rowData.ledger_account_id)}
-          </span>
-        ),
-        copyValue: ({ rowData }: { rowData: TxRow }) =>
-          categoryOf(rowData.ledger_account_id),
       },
       {
         ...keyColumn<TxRow, 'account_id'>(
@@ -241,14 +229,12 @@ export function TransactionsView({
         minWidth: 130,
       },
       {
-        id: 'shares',
-        title: 'Dono',
-        minWidth: 170,
-        disabled: true,
-        component: ({ rowData }: { rowData: TxRow }) => (
-          <span className="truncate px-2 text-muted">{rowData.shares}</span>
+        ...keyColumn<TxRow, 'envelope_id'>(
+          'envelope_id',
+          selectColumn(opt(envelopes), true) as Column,
         ),
-        copyValue: ({ rowData }: { rowData: TxRow }) => rowData.shares,
+        title: 'Tipo',
+        minWidth: 120,
       },
       {
         ...keyColumn<TxRow, 'pay_to_person_id'>(
@@ -266,12 +252,27 @@ export function TransactionsView({
         minWidth: 120,
       },
       {
-        ...keyColumn<TxRow, 'amount_cents'>(
-          'amount_cents',
-          moneyColumn as Column,
+        id: 'shares',
+        title: 'Dono',
+        minWidth: 170,
+        disabled: true,
+        component: ({ rowData }: { rowData: TxRow }) => (
+          <span className="truncate px-2 text-muted">{rowData.shares}</span>
         ),
-        title: 'Valor',
-        minWidth: 120,
+        copyValue: ({ rowData }: { rowData: TxRow }) => rowData.shares,
+      },
+      {
+        id: 'category',
+        title: 'Categoria',
+        minWidth: 110,
+        disabled: true,
+        component: ({ rowData }: { rowData: TxRow }) => (
+          <span className="truncate px-2 text-muted">
+            {categoryOf(rowData.ledger_account_id)}
+          </span>
+        ),
+        copyValue: ({ rowData }: { rowData: TxRow }) =>
+          categoryOf(rowData.ledger_account_id),
       },
     ] as Column<TxRow>[];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,9 +373,7 @@ export function TransactionsView({
     router.refresh();
   }
 
-  const selectedRows = selection
-    ? filtered.slice(selection.from, selection.to + 1)
-    : [];
+  const selectedRows = rows.filter((r) => selectedIds.includes(r.id));
   const hasInstallments = selectedRows.some((r) => r.installment_group_id);
 
   async function removeSelected() {
@@ -385,7 +384,7 @@ export function TransactionsView({
     );
     setDeleting(false);
     if (!res.ok) return setError(res.error);
-    setSelection(null);
+    setSelectedIds([]);
     router.refresh();
   }
 
@@ -509,6 +508,9 @@ export function TransactionsView({
           <span className="text-muted">
             {selectedRows.length} selecionado(s)
           </span>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>
+            Limpar seleção
+          </Button>
           {hasInstallments && (
             <Select
               aria-label="Escopo da exclusão"
@@ -542,9 +544,12 @@ export function TransactionsView({
           height={gridHeight}
           rowHeight={36}
           rowKey="id"
-          onSelectionChange={({ selection: s }) =>
-            setSelection(s ? { from: s.min.row, to: s.max.row } : null)
-          }
+          onSelectionChange={({ selection: s }) => {
+            if (!s) return;
+            setSelectedIds(
+              filtered.slice(s.min.row, s.max.row + 1).map((r) => r.id),
+            );
+          }}
         />
       </div>
       <p className="mt-2 text-xs text-muted" aria-live="polite">
