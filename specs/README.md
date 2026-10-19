@@ -10,6 +10,14 @@ Este projeto segue uma abordagem de **Spec-Driven Development (SDD)**: antes de 
 4. **Implementar** — a spec aprovada guia o desenvolvimento. Referencie o número da spec nos commits/PRs relacionados (ex: `feat(auth): login flow [001-auth]`).
 5. **Atualizar status** — ao concluir, marque a spec como `Implemented`. Se a implementação divergir da spec original, atualize a spec para refletir a realidade (specs desatualizadas perdem valor).
 
+## Definição de pronto
+
+Uma feature só passa para `Implemented` quando:
+
+1. Os critérios de aceite da spec estão atendidos.
+2. Há **testes automatizados** cobrindo a implementação: unitários para a lógica, testes SQL para banco e permissões, E2E para os fluxos principais (veja [`../docs/TESTING.md`](../docs/TESTING.md) e [`../CLAUDE.md`](../CLAUDE.md)). Cada critério de aceite deve ter ao menos um teste correspondente, ou uma justificativa no PR.
+3. O CI está verde e as migrations foram aplicadas no dev e no prod.
+
 ## Convenção de numeração
 
 - Specs são numeradas sequencialmente: `001-auth`, `002-transactions`, `003-budgets`, etc.
@@ -33,9 +41,9 @@ Toda spec segue o template em [`_template/spec.md`](./_template/spec.md), com as
 
 ## Specs existentes
 
-| ID | Nome | Status |
-|----|------|--------|
-| [001-auth](./001-auth/spec.md) | Autenticação de Usuários | Implemented |
-| [002-social-auth](./002-social-auth/spec.md) | Login Social com Google | In Review |
-| [003-workspaces](./003-workspaces/spec.md) | Workspaces Compartilhados | Implemented |
-| [004-lancamentos](./004-lancamentos/spec.md) | Lançamentos (Contas, Títulos e Transações) | Approved |
+| ID                                           | Nome                                       | Status      |
+| -------------------------------------------- | ------------------------------------------ | ----------- |
+| [001-auth](./001-auth/spec.md)               | Autenticação de Usuários                   | Implemented |
+| [002-social-auth](./002-social-auth/spec.md) | Login Social com Google                    | In Review   |
+| [003-workspaces](./003-workspaces/spec.md)   | Workspaces Compartilhados                  | Implemented |
+| [004-lancamentos](./004-lancamentos/spec.md) | Lançamentos (Contas, Títulos e Transações) | Approved    |

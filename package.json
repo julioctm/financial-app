@@ -11,7 +11,9 @@
     "test:db": "node scripts/test-db.mjs",
     "test:e2e": "playwright test",
     "supabase:start": "supabase start -x studio,imgproxy,edge-runtime,vector,logflare,supavisor,realtime,storage-api,postgres-meta",
-    "supabase:stop": "supabase stop"
+    "supabase:stop": "supabase stop",
+    "test:unit": "vitest run",
+    "test": "npm run test:unit && npm run test:db"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -36,6 +38,7 @@
     "prettier": "^3.1.0",
     "supabase": "^2.121.0",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^3.2.7"
   }
 }
