@@ -388,6 +388,19 @@ export function TransactionsView({
     router.refresh();
   }
 
+  // The grid keeps its column definitions internally, so it must be recreated when the
+  // catalogs change (e.g. a title created inline in the dialog), or labels render blank.
+  const gridKey = [ledger, categories, envelopes, accounts, people]
+    .map((list) =>
+      list
+        .map(
+          (x) =>
+            `${x.id}${'archived' in x && x.archived ? 'a' : ''}${'name' in x ? x.name : ''}`,
+        )
+        .join(','),
+    )
+    .join('|');
+
   const prev = shiftMonth(month, -1);
   const next = shiftMonth(month, 1);
   const gridHeight = Math.min(
@@ -536,6 +549,7 @@ export function TransactionsView({
 
       <div className="tx-grid" aria-busy={saving > 0}>
         <DataSheetGrid<TxRow>
+          key={gridKey}
           value={filtered}
           columns={columns}
           onChange={onChange}
