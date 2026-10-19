@@ -14,6 +14,8 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
+    // Wide enough to render every grid column (the grid virtualizes columns that do not fit).
+    viewport: { width: 1800, height: 900 },
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',
     trace: 'retain-on-failure',

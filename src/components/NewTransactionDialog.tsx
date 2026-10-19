@@ -675,6 +675,9 @@ export function NewTransactionDialog({
             ))}
             <option value="custom">Personalizado…</option>
           </Select>
+          <p className="text-xs text-muted">
+            Cada dono vira uma linha na tabela, com a sua parte do valor.
+          </p>
           {ownerMode === 'custom' && (
             <div className="space-y-2 rounded-lg bg-canvas p-3">
               {activePeople.map((p) => (

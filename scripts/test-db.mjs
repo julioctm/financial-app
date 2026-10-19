@@ -22,6 +22,9 @@ for (const t of tests) {
   } catch (e) {
     failed++;
     console.error(`FAIL ${t}: ${e.message}`);
+    // A failed test leaves its transaction open; reset so the next test starts clean.
+    await db.exec('rollback').catch(() => {});
+    await db.exec('reset role').catch(() => {});
   }
 }
 process.exit(failed ? 1 : 0);

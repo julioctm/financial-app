@@ -32,3 +32,9 @@ export function parseMoney(input: string | null | undefined): number | null {
 export function editableMoney(cents: number | null | undefined): string {
   return cents == null ? '' : (cents / 100).toFixed(2).replace('.', ',');
 }
+
+// Share of a split purchase: 65 -> "65%", 33.33 -> "33,33%", null -> "" (row was not split).
+export function formatPercent(value: number | null | undefined): string {
+  if (value == null) return '';
+  return `${value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
+}

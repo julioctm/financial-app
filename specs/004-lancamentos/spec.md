@@ -5,6 +5,20 @@
 **Autor:**
 **Data:** 2026-10-09
 
+## Revisão do modelo (2026-10-20): uma linha por dono
+
+Depois de usar a primeira versão, o modelo mudou para espelhar a planilha: **uma linha = um dono**.
+
+- Uma compra dividida entre N pessoas vira **N linhas**, cada uma com seu dono, seu valor e, se for o caso, seu "Pagar para". As linhas criadas juntas compartilham um `split_group_id`.
+- **Pagar para** = quem adiantou o dinheiro. A linha de quem adiantou **não** tem "pagar para"; as demais pagam para ele. Se uma terceira pessoa adiantou, todas as linhas pagam para ela.
+- **Parcelas e donos se combinam**: 3 parcelas com 2 donos geram 6 linhas (cada parcela tem seu próprio grupo de divisão).
+- A coluna **Divisão** mostra só o percentual da linha dentro do grupo (ex.: `65%`), **calculado** a partir dos valores das linhas (view `transactions_view`). Editar o valor de uma linha não altera as outras; só a Divisão muda.
+- Escopos de edição de parcelas valem para as linhas **do mesmo dono** ("esta linha nos outros meses"). A exclusão tem escopos: só as selecionadas, estas e as parcelas seguintes (todos os donos) e **toda a compra** (todos os donos e parcelas).
+- O acerto de contas passa a ser: linha com "Pagar para" diferente do dono = o dono deve àquela pessoa o valor da linha.
+- A tabela `transaction_shares` e o invariante "partes somam 100%" foram removidos; o rateio padrão continua sendo usado só para sugerir os percentuais ao criar.
+
+As seções abaixo descrevem o modelo original; onde divergirem, vale esta revisão (a migration `20261020000000_owner_rows.sql` converte dados existentes).
+
 ## 1. Contexto e Motivação
 
 O coração do controle atual é uma aba de **Transações** (mais de 10 mil linhas desde 2020) onde cada compra, parcela e despesa é digitada. Cada linha registra: data da compra, **mês de pagamento** (a fatura em que cai), cartão/conta, **Dono** (de quem é o gasto), **Pagar Para** (quem pagou e será reembolsado no acerto), descrição, título (conta contábil), tipo e valor.

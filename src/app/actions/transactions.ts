@@ -14,6 +14,7 @@ export type CellPatch = Partial<{
   envelope_id: string | null;
   account_id: string | null;
   pay_to_person_id: string | null;
+  owner_person_id: string;
 }>;
 
 const PATCH_KEYS: (keyof CellPatch)[] = [
@@ -24,6 +25,7 @@ const PATCH_KEYS: (keyof CellPatch)[] = [
   'envelope_id',
   'account_id',
   'pay_to_person_id',
+  'owner_person_id',
 ];
 
 export type Stamp = { updated_at: string };

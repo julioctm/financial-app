@@ -52,12 +52,18 @@ describe('parsePaymentMonth', () => {
     expect(parsePaymentMonth(input)).toBe(expected);
   });
 
-  it.each(['', '13/2026', '00/2026', 'xyz/2026', '2026', '10/1800', null, undefined])(
-    'devolve null para %j',
-    (input) => {
-      expect(parsePaymentMonth(input as string | null | undefined)).toBeNull();
-    },
-  );
+  it.each([
+    '',
+    '13/2026',
+    '00/2026',
+    'xyz/2026',
+    '2026',
+    '10/1800',
+    null,
+    undefined,
+  ])('devolve null para %j', (input) => {
+    expect(parsePaymentMonth(input as string | null | undefined)).toBeNull();
+  });
 });
 
 describe('formatPaymentMonth', () => {

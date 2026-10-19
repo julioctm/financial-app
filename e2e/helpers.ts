@@ -64,7 +64,15 @@ export async function gridRows(page: Page): Promise<string[][]> {
 // the first time (when they do not exist yet).
 export async function addTransaction(
   page: Page,
-  opts: { description: string; amount: string; installments?: number },
+  opts: {
+    description: string;
+    amount: string;
+    installments?: number;
+    /** Custom split by person name, e.g. { Ana: '65', Vó: '35' }. */
+    split?: Record<string, string>;
+    /** Person who advanced the money ("Pagar para"). */
+    payTo?: string;
+  },
 ) {
   await page.getByRole('button', { name: 'Novo lançamento' }).click();
   const dialog = page.getByRole('dialog');
@@ -92,10 +100,41 @@ export async function addTransaction(
   await dialog.getByLabel(/^Valor/).fill(opts.amount);
   if (opts.installments)
     await dialog.getByLabel('Parcelas').fill(String(opts.installments));
+  if (opts.payTo)
+    await dialog.getByLabel(/^Pagar para/).selectOption({ label: opts.payTo });
+  if (opts.split) {
+    await dialog
+      .getByLabel('Dono do lançamento')
+      .selectOption({ label: 'Personalizado…' });
+    for (const [name, percent] of Object.entries(opts.split)) {
+      await dialog.getByLabel(`Percentual de ${name}`).fill(percent);
+    }
+  }
   await dialog.getByRole('button', { name: 'Salvar lançamento' }).click();
   await expect(dialog).toBeHidden();
 }
 
 export async function waitForGrid(page: Page) {
   await expect(page.locator('.dsg-container')).toBeVisible();
+}
+
+// People without login are added in Settings and then show up as owners / "pay to" options.
+export async function addExternalPerson(page: Page, name: string) {
+  await page.goto('/settings');
+  await page.getByLabel('Nome da pessoa sem login').fill(name);
+  await page.getByRole('button', { name: 'Adicionar' }).click();
+  await expect(
+    page.getByRole('listitem').filter({ hasText: name }),
+  ).toBeVisible();
+}
+
+// Reads grid rows as { owner, payTo, split, amount, description } for the split-related columns.
+export async function splitRows(page: Page) {
+  return (await gridRows(page)).map((r) => ({
+    description: r[3],
+    amount: r[5],
+    owner: r[8],
+    payTo: r[9],
+    split: r[10],
+  }));
 }

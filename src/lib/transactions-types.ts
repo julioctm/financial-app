@@ -7,11 +7,12 @@ export type TxRow = {
   envelope_id: string | null;
   account_id: string | null;
   pay_to_person_id: string | null;
+  owner_person_id: string;
   amount_cents: number;
   updated_at: string;
   installment_group_id: string | null;
   installment_number: number | null;
-  shares: string; // display only, e.g. "Ana 65% · Bruno 35%"
+  split_percent: number | null; // this row's share of its split group; null if not split
 };
 
 export type LedgerOption = {

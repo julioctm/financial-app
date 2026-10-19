@@ -12,8 +12,8 @@ import type {
 } from '@/lib/transactions-types';
 import { requireWorkspace } from '@/lib/workspace';
 
-type DbRow = Omit<TxRow, 'shares'> & {
-  transaction_shares: { person_id: string; percent: number }[];
+type DbRow = Omit<TxRow, 'split_percent'> & {
+  split_percent: number | string | null;
 };
 
 export default async function LancamentosPage({
@@ -32,9 +32,9 @@ export default async function LancamentosPage({
   const [tx, ledger, categories, envelopes, accounts, people, split] =
     await Promise.all([
       supabase
-        .from('transactions')
+        .from('transactions_view')
         .select(
-          'id, purchase_date, payment_month, description, ledger_account_id, envelope_id, account_id, pay_to_person_id, amount_cents, updated_at, installment_group_id, installment_number, transaction_shares(person_id, percent)',
+          'id, purchase_date, payment_month, description, ledger_account_id, envelope_id, account_id, pay_to_person_id, owner_person_id, amount_cents, updated_at, installment_group_id, installment_number, split_percent',
         )
         .eq('workspace_id', ws)
         .eq('payment_month', `${month}-01`)
@@ -76,20 +76,11 @@ export default async function LancamentosPage({
     name: p.display_name as string,
     active: p.is_active as boolean,
   }));
-  const nameOf = (id: string) =>
-    peopleOptions.find((p) => p.id === id)?.name ?? '?';
-
-  const rows: TxRow[] = ((tx.data ?? []) as unknown as DbRow[]).map((r) => {
-    const { transaction_shares, ...rest } = r;
-    return {
-      ...rest,
-      amount_cents: Number(r.amount_cents),
-      shares: [...transaction_shares]
-        .sort((a, b) => Number(b.percent) - Number(a.percent))
-        .map((s) => `${nameOf(s.person_id)} ${Number(s.percent)}%`)
-        .join(' · '),
-    };
-  });
+  const rows: TxRow[] = ((tx.data ?? []) as unknown as DbRow[]).map((r) => ({
+    ...r,
+    amount_cents: Number(r.amount_cents),
+    split_percent: r.split_percent == null ? null : Number(r.split_percent),
+  }));
 
   const named = (
     rows: { id: unknown; name: unknown; archived_at: unknown }[] | null,
