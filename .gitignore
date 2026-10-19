@@ -41,3 +41,8 @@ supabase/.temp
 
 # Dados financeiros reais (planilhas) - nunca versionar
 private/
+
+# Playwright
+.next-e2e/
+test-results/
+playwright-report/

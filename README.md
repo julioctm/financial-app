@@ -16,14 +16,15 @@ O app sobe em http://localhost:3000. A configuração do Supabase e da Vercel es
 
 ## Scripts
 
-| Comando             | O que faz                                          |
-| ------------------- | -------------------------------------------------- |
-| `npm run dev`       | Servidor de desenvolvimento                        |
-| `npm run build`     | Build de produção                                  |
-| `npm start`         | Serve o build de produção                          |
-| `npm run lint`      | ESLint (`next lint`)                               |
-| `npm run typecheck` | Checagem de tipos (`tsc --noEmit`)                 |
-| `npm run test:db`   | Testes SQL das migrations (`supabase/tests`, PGlite) |
+| Comando             | O que faz                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| `npm run dev`       | Servidor de desenvolvimento                                                                   |
+| `npm run build`     | Build de produção                                                                             |
+| `npm start`         | Serve o build de produção                                                                     |
+| `npm run lint`      | ESLint (`next lint`)                                                                          |
+| `npm run typecheck` | Checagem de tipos (`tsc --noEmit`)                                                            |
+| `npm run test:db`   | Testes SQL das migrations (`supabase/tests`, PGlite)                                          |
+| `npm run test:e2e`  | Testes ponta a ponta (Playwright + Supabase local, veja [`docs/TESTING.md`](docs/TESTING.md)) |
 
 ## Estrutura
 
