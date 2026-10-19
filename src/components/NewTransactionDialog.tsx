@@ -410,7 +410,7 @@ export function NewTransactionDialog({
       ]);
       setEnvelopeId(item.id);
     }
-    setCreating(null);
+    setCreating((c) => (c === kind ? null : c));
     router.refresh();
   }
 
