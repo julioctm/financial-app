@@ -10,7 +10,6 @@ import {
   DataSheetGrid,
   isoDateColumn,
   keyColumn,
-  textColumn,
   type Column,
 } from 'react-datasheet-grid';
 
@@ -87,6 +86,18 @@ type Operation = {
 
 type Prompt = { id: string; changes: Record<string, string | number | null> };
 
+// Commit on blur/Enter (not per keystroke): every commit is a server write guarded by
+// the row version, so per-keystroke writes would conflict with each other.
+const descriptionColumn = createTextColumn<string>({
+  continuousUpdates: false,
+  deletedValue: '',
+  parseUserInput: (v) => v.trim(),
+  parsePastedValue: (v) => v.replace(/[\n\r]+/g, ' ').trim(),
+  formatBlurredInput: (v) => v ?? '',
+  formatInputOnFocus: (v) => v ?? '',
+  formatForCopy: (v) => v ?? '',
+});
+
 const moneyColumn = createTextColumn<number | null>({
   alignRight: true,
   continuousUpdates: false,
@@ -150,7 +161,9 @@ export function TransactionsView({
   if (seen !== initialRows) {
     setSeen(initialRows);
     setRows(initialRows);
-    setSelectedIds([]);
+    setSelectedIds((ids) =>
+      ids.filter((id) => initialRows.some((r) => r.id === id)),
+    );
   }
 
   const filtered = useMemo(() => {
@@ -198,7 +211,10 @@ export function TransactionsView({
         minWidth: 95,
       },
       {
-        ...keyColumn<TxRow, 'description'>('description', textColumn as Column),
+        ...keyColumn<TxRow, 'description'>(
+          'description',
+          descriptionColumn as Column,
+        ),
         title: 'Descrição',
         minWidth: 190,
         grow: 3,
