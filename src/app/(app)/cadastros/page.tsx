@@ -131,8 +131,10 @@ export default async function CadastrosPage() {
             },
             {
               key: 'holder_person_id',
-              label: 'Titular',
+              label: 'Dono (titular)',
               type: 'select',
+              required: true,
+              placeholder: 'Escolha o dono…',
               options: peopleRows.map((p) => ({
                 value: p.id,
                 label: p.display_name,
