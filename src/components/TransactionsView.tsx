@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
   createTextColumn,
-  DataSheetGrid,
+  DynamicDataSheetGrid as DataSheetGrid,
   isoDateColumn,
   keyColumn,
   type Column,
@@ -404,19 +404,6 @@ export function TransactionsView({
     router.refresh();
   }
 
-  // The grid keeps its column definitions internally, so it must be recreated when the
-  // catalogs change (e.g. a title created inline in the dialog), or labels render blank.
-  const gridKey = [ledger, categories, envelopes, accounts, people]
-    .map((list) =>
-      list
-        .map(
-          (x) =>
-            `${x.id}${'archived' in x && x.archived ? 'a' : ''}${'name' in x ? x.name : ''}`,
-        )
-        .join(','),
-    )
-    .join('|');
-
   const prev = shiftMonth(month, -1);
   const next = shiftMonth(month, 1);
   const gridHeight = Math.min(
@@ -565,7 +552,10 @@ export function TransactionsView({
 
       <div className="tx-grid" aria-busy={saving > 0}>
         <DataSheetGrid<TxRow>
-          key={gridKey}
+          // The static grid variant freezes callbacks and columns after the first render, which
+          // breaks selection and edits as data changes; the dynamic one re-renders with props.
+          // Keyed by month so navigating resets its internal selection.
+          key={month}
           value={filtered}
           columns={columns}
           onChange={onChange}
