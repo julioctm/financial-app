@@ -31,8 +31,9 @@ export type AccountOption = NamedOption & {
 export type PersonOption = { id: string; name: string; active: boolean };
 export type SplitDefault = { person_id: string; percent: number };
 
-// A row of the grid: either a saved transaction or a client-only draft whose required
-// fields may still be empty.
+// A row of the grid: either a saved transaction or a client-only draft whose fields may
+// still be empty. pm_month / pm_year are the payment month split in two columns, as in the
+// spreadsheet; a string value is an unmatched marker (see lib/unmatched).
 export type GridRow = Omit<
   TxRow,
   | 'purchase_date'
@@ -43,6 +44,8 @@ export type GridRow = Omit<
 > & {
   purchase_date: string | null;
   payment_month: string | null;
+  pm_month: number | string | null;
+  pm_year: number | string | null;
   ledger_account_id: string | null;
   owner_person_id: string | null;
   amount_cents: number | null;

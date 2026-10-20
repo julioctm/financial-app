@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  composePaymentMonth,
   formatDateBr,
+  formatMonthPart,
+  formatYearPart,
   formatPaymentMonth,
   isMonthKey,
+  parseDateCell,
+  parseMonthPart,
+  parseYearPart,
+  paymentParts,
   monthLabel,
   parseDateInput,
   parsePaymentMonth,
@@ -136,5 +143,80 @@ describe('formatDateBr', () => {
 
   it('é o inverso de parseDateInput', () => {
     expect(parseDateInput(formatDateBr('2026-01-05'))).toBe('2026-01-05');
+  });
+});
+
+describe('parseMonthPart (coluna "Mês Pagamento")', () => {
+  it.each([
+    ['JAN', 1],
+    ['jan', 1],
+    ['Fev', 2],
+    ['MAR', 3],
+    ['dez', 12],
+    ['outubro', 10],
+    ['Março', 3],
+    ['marco', 3],
+    ['10', 10],
+    ['1', 1],
+    ['12', 12],
+  ])('%j vira o mês %i', (input, expected) => {
+    expect(parseMonthPart(input)).toBe(expected);
+  });
+
+  it('vazio é null; o que não for mês vira marcador de inválido', () => {
+    expect(parseMonthPart('')).toBeNull();
+    expect(parseMonthPart('   ')).toBeNull();
+    expect(parseMonthPart('13')).toBe('?:13');
+    expect(parseMonthPart('0')).toBe('?:0');
+    expect(parseMonthPart('xyz')).toBe('?:xyz');
+  });
+});
+
+describe('parseYearPart (coluna "Ano Pagamento")', () => {
+  it('aceita 4 ou 2 dígitos', () => {
+    expect(parseYearPart('2026')).toBe(2026);
+    expect(parseYearPart('26')).toBe(2026);
+    expect(parseYearPart(' 2027 ')).toBe(2027);
+  });
+
+  it('vazio é null; o resto vira marcador', () => {
+    expect(parseYearPart('')).toBeNull();
+    expect(parseYearPart('202')).toBe('?:202');
+    expect(parseYearPart('abcd')).toBe('?:abcd');
+    expect(parseYearPart('1800')).toBe('?:1800');
+  });
+});
+
+describe('formatMonthPart / formatYearPart', () => {
+  it('mostra JAN..DEZ e o ano; marcadores aparecem com aviso', () => {
+    expect(formatMonthPart(10)).toBe('OUT');
+    expect(formatMonthPart(null)).toBe('');
+    expect(formatMonthPart('?:xyz')).toBe('⚠ xyz');
+    expect(formatYearPart(2026)).toBe('2026');
+    expect(formatYearPart('?:20x')).toBe('⚠ 20x');
+  });
+});
+
+describe('paymentParts / composePaymentMonth', () => {
+  it('são inversos', () => {
+    expect(paymentParts('2026-10-01')).toEqual({ month: 10, year: 2026 });
+    expect(composePaymentMonth(10, 2026)).toBe('2026-10-01');
+    expect(composePaymentMonth(3, 2027)).toBe('2027-03-01');
+  });
+
+  it('só compõe quando mês e ano são números válidos', () => {
+    expect(composePaymentMonth(null, 2026)).toBeNull();
+    expect(composePaymentMonth(10, null)).toBeNull();
+    expect(composePaymentMonth('?:x', 2026)).toBeNull();
+    expect(paymentParts(null)).toEqual({ month: null, year: null });
+  });
+});
+
+describe('parseDateCell', () => {
+  it('data válida vira ISO, vazio vira null e lixo vira marcador', () => {
+    expect(parseDateCell('19/10/2026')).toBe('2026-10-19');
+    expect(parseDateCell('')).toBeNull();
+    expect(parseDateCell('31/02/2026')).toBe('?:31/02/2026');
+    expect(parseDateCell('ontem')).toBe('?:ontem');
   });
 });

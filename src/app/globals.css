@@ -50,3 +50,8 @@
 .tx-grid .dsg-draft-row {
   --dsg-cell-background-color: rgb(var(--accent-tint) / 0.55);
 }
+
+/* Same text size in every cell (text inputs default to a larger size than the dropdown cells) */
+.tx-grid .dsg-input {
+  font-size: 0.8125rem;
+}

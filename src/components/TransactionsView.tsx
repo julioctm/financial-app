@@ -28,11 +28,16 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/card';
 import { FormMessage, Input, Select } from '@/components/ui/field';
 import {
-  formatDateBr,
+  composePaymentMonth,
+  formatDateCell,
+  formatMonthPart,
   formatPaymentMonth,
+  formatYearPart,
   monthLabel,
-  parseDateInput,
-  parsePaymentMonth,
+  parseDateCell,
+  parseMonthPart,
+  parseYearPart,
+  paymentParts,
   shiftMonth,
   todayIso,
 } from '@/lib/dates';
@@ -42,7 +47,10 @@ import {
   isUnmatched,
   missingFields,
   signedAmount,
+  syncPaymentMonth,
+  toGridRow,
   unmatchedText,
+  withDefaults,
   withTrailingBlank,
   type DraftDefaults,
 } from '@/lib/drafts';
@@ -52,6 +60,7 @@ import {
   formatPercent,
   parseMoney,
 } from '@/lib/money';
+import { summarizeByOwner } from '@/lib/summary';
 import type {
   AccountOption,
   LedgerOption,
@@ -71,6 +80,8 @@ const FIELD_LABELS: Record<string, string> = {
   account_id: 'Conta',
   pay_to_person_id: 'Pagar para',
   owner_person_id: 'Dono',
+  pm_month: 'Mês de pagamento',
+  pm_year: 'Ano de pagamento',
   amount_cents: 'Valor',
 };
 const PATCH_FIELDS = [
@@ -131,25 +142,37 @@ const moneyColumn = createTextColumn<number | null>({
   formatForCopy: editableMoney,
 });
 
-// Typed or pasted as dd/mm/aaaa (what a spreadsheet copies); stored as ISO.
+// Typed or pasted as dd/mm/aaaa (what a spreadsheet copies); stored as ISO. Text that is not
+// a real date is kept as a marker so it is reported instead of being replaced by a default.
 const dateColumn = createTextColumn<string | null>({
   continuousUpdates: false,
   deletedValue: null,
-  parseUserInput: parseDateInput,
-  parsePastedValue: parseDateInput,
-  formatBlurredInput: formatDateBr,
-  formatInputOnFocus: formatDateBr,
-  formatForCopy: formatDateBr,
+  parseUserInput: parseDateCell,
+  parsePastedValue: parseDateCell,
+  formatBlurredInput: formatDateCell,
+  formatInputOnFocus: formatDateCell,
+  formatForCopy: formatDateCell,
 });
 
-const monthColumn = createTextColumn<string | null>({
+// The spreadsheet has "Mês Pagamento" (JAN) and "Ano Pagamento" (2026) as two columns.
+const monthPartColumn = createTextColumn<number | string | null>({
   continuousUpdates: false,
   deletedValue: null,
-  parseUserInput: parsePaymentMonth,
-  parsePastedValue: parsePaymentMonth,
-  formatBlurredInput: formatPaymentMonth,
-  formatInputOnFocus: formatPaymentMonth,
-  formatForCopy: formatPaymentMonth,
+  parseUserInput: parseMonthPart,
+  parsePastedValue: parseMonthPart,
+  formatBlurredInput: formatMonthPart,
+  formatInputOnFocus: formatMonthPart,
+  formatForCopy: formatMonthPart,
+});
+
+const yearPartColumn = createTextColumn<number | string | null>({
+  continuousUpdates: false,
+  deletedValue: null,
+  parseUserInput: parseYearPart,
+  parsePastedValue: parseYearPart,
+  formatBlurredInput: formatYearPart,
+  formatInputOnFocus: formatYearPart,
+  formatForCopy: formatYearPart,
 });
 
 export function TransactionsView({
@@ -185,7 +208,7 @@ export function TransactionsView({
   });
   const defaults = useMemo(() => defaultsFor(month), [month]);
   const [drafts, setDrafts] = useState<GridRow[]>(() => [
-    blankDraft(`draft-${++idCounter.current}`, defaultsFor(month)),
+    blankDraft(`draft-${++idCounter.current}`),
   ]);
   const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
   const savingDrafts = useRef(new Set<string>()); // guards against saving a draft twice
@@ -222,7 +245,6 @@ export function TransactionsView({
       setDrafts((d) =>
         withTrailingBlank(
           d.filter((x) => !done.has(x.id)),
-          defaults,
           newDraftId,
         ),
       );
@@ -231,7 +253,7 @@ export function TransactionsView({
   if (seenMonth !== month) {
     // New month: unsaved drafts do not follow you.
     setSeenMonth(month);
-    setDrafts([blankDraft(newDraftId(), defaultsFor(month))]);
+    setDrafts([blankDraft(newDraftId())]);
     setDraftErrors({});
     setNotice(null);
   }
@@ -246,13 +268,9 @@ export function TransactionsView({
     );
   }, [rows, q, accountFilter, ledgerFilter]);
 
-  const income = filtered.reduce(
-    (s, r) => s + (r.amount_cents > 0 ? r.amount_cents : 0),
-    0,
-  );
-  const expense = filtered.reduce(
-    (s, r) => s + (r.amount_cents < 0 ? -r.amount_cents : 0),
-    0,
+  const summary = useMemo(
+    () => summarizeByOwner(filtered, people),
+    [filtered, people],
   );
 
   const categoryOf = (ledgerId: string | null) => {
@@ -263,99 +281,97 @@ export function TransactionsView({
   const columns = useMemo(() => {
     const opt = (list: NamedOption[]) =>
       list.map((n) => ({ value: n.id, label: n.name, archived: n.archived }));
+    const peopleOpts = people.map((p) => ({
+      value: p.id,
+      label: p.name,
+      archived: !p.active,
+    }));
+    // Same order as the spreadsheet's "Transações" tab (without its two formula columns), so
+    // whole rows can be pasted. Read-only extras come after.
     return [
       {
-        ...keyColumn<TxRow, 'purchase_date'>(
+        ...keyColumn<GridRow, 'purchase_date'>(
           'purchase_date',
           dateColumn as Column,
         ),
-        title: 'Data',
+        title: 'Data da transação',
+        minWidth: 105,
+      },
+      {
+        ...keyColumn<GridRow, 'pm_month'>(
+          'pm_month',
+          monthPartColumn as Column,
+        ),
+        title: 'Mês Pagamento',
+        minWidth: 82,
+      },
+      {
+        ...keyColumn<GridRow, 'pm_year'>('pm_year', yearPartColumn as Column),
+        title: 'Ano Pagamento',
+        minWidth: 82,
+      },
+      {
+        ...keyColumn<GridRow, 'account_id'>(
+          'account_id',
+          selectColumn(opt(accounts), true) as Column,
+        ),
+        title: 'Cartão',
         minWidth: 110,
       },
       {
-        ...keyColumn<TxRow, 'payment_month'>(
-          'payment_month',
-          monthColumn as Column,
+        ...keyColumn<GridRow, 'pay_to_person_id'>(
+          'pay_to_person_id',
+          selectColumn(peopleOpts, true) as Column,
         ),
-        title: 'Pagamento',
+        title: 'Pagar Para',
         minWidth: 95,
       },
       {
-        ...keyColumn<TxRow, 'description'>(
+        ...keyColumn<GridRow, 'owner_person_id'>(
+          'owner_person_id',
+          selectColumn(peopleOpts, false) as Column,
+        ),
+        title: 'Dono',
+        minWidth: 85,
+      },
+      {
+        ...keyColumn<GridRow, 'description'>(
           'description',
           descriptionColumn as Column,
         ),
         title: 'Descrição',
-        minWidth: 190,
+        minWidth: 160,
         grow: 3,
       },
       {
-        ...keyColumn<TxRow, 'ledger_account_id'>(
+        ...keyColumn<GridRow, 'ledger_account_id'>(
           'ledger_account_id',
           selectColumn(opt(ledger), false) as Column,
         ),
         title: 'Título',
-        minWidth: 140,
+        minWidth: 120,
         grow: 1,
       },
       {
-        ...keyColumn<TxRow, 'amount_cents'>(
-          'amount_cents',
-          moneyColumn as Column,
-        ),
-        title: 'Valor',
-        minWidth: 110,
-      },
-      {
-        ...keyColumn<TxRow, 'account_id'>(
-          'account_id',
-          selectColumn(opt(accounts), true) as Column,
-        ),
-        title: 'Conta / cartão',
-        minWidth: 130,
-      },
-      {
-        ...keyColumn<TxRow, 'envelope_id'>(
+        ...keyColumn<GridRow, 'envelope_id'>(
           'envelope_id',
           selectColumn(opt(envelopes), true) as Column,
         ),
         title: 'Tipo',
-        minWidth: 120,
+        minWidth: 100,
       },
       {
-        ...keyColumn<TxRow, 'owner_person_id'>(
-          'owner_person_id',
-          selectColumn(
-            people.map((p) => ({
-              value: p.id,
-              label: p.name,
-              archived: !p.active,
-            })),
-            false,
-          ) as Column,
+        ...keyColumn<GridRow, 'amount_cents'>(
+          'amount_cents',
+          moneyColumn as Column,
         ),
-        title: 'Dono',
-        minWidth: 110,
-      },
-      {
-        ...keyColumn<TxRow, 'pay_to_person_id'>(
-          'pay_to_person_id',
-          selectColumn(
-            people.map((p) => ({
-              value: p.id,
-              label: p.name,
-              archived: !p.active,
-            })),
-            true,
-          ) as Column,
-        ),
-        title: 'Pagar para',
-        minWidth: 120,
+        title: 'Valor',
+        minWidth: 100,
       },
       {
         id: 'split',
         title: 'Divisão',
-        minWidth: 80,
+        minWidth: 70,
         disabled: true,
         component: ({ rowData }: { rowData: GridRow }) => (
           <span className="truncate px-2 text-muted">
@@ -368,7 +384,7 @@ export function TransactionsView({
       {
         id: 'category',
         title: 'Categoria',
-        minWidth: 110,
+        minWidth: 100,
         disabled: true,
         component: ({ rowData }: { rowData: GridRow }) => (
           <span className="truncate px-2 text-muted">
@@ -429,6 +445,13 @@ export function TransactionsView({
         stamp = res.updated_at;
       }
       patchRow(oldRow.id, { updated_at: stamp });
+      if (changed.includes('payment_month')) {
+        // The row now belongs to another month: reload so it leaves this one.
+        setNotice(
+          `Lançamento movido para ${formatPaymentMonth(newRow.payment_month)}.`,
+        );
+        router.refresh();
+      }
 
       const propagate = changed.filter((k) => PROPAGATE.includes(k));
       if (newRow.installment_group_id && propagate.length > 0) {
@@ -469,8 +492,19 @@ export function TransactionsView({
     for (const op of operations) {
       if (op.type !== 'UPDATE') continue;
       for (let i = op.fromRowIndex; i < Math.min(op.toRowIndex, nReal); i++) {
-        if (before[i] && newValue[i])
-          updated.set(before[i].id, newValue[i] as TxRow);
+        if (!before[i] || !newValue[i]) continue;
+        let next = newValue[i] as TxRow & Pick<GridRow, 'pm_month' | 'pm_year'>;
+        // Month and year are two columns; the payment month follows whichever one changed.
+        const was = paymentParts(before[i].payment_month);
+        if (next.pm_month !== was.month || next.pm_year !== was.year) {
+          next = {
+            ...next,
+            payment_month:
+              composePaymentMonth(next.pm_month, next.pm_year) ??
+              before[i].payment_month,
+          };
+        }
+        updated.set(before[i].id, next);
       }
     }
     for (const [id, next] of [...updated]) {
@@ -507,7 +541,10 @@ export function TransactionsView({
             split_percent: null,
           },
     );
-    const nextDrafts = withTrailingBlank(incoming, defaults, newDraftId);
+    const nextDrafts = withTrailingBlank(
+      incoming.map(syncPaymentMonth),
+      newDraftId,
+    );
     setDrafts(nextDrafts);
     for (const d of nextDrafts) {
       if (missingFields(d).length === 0) void saveDraft(d);
@@ -515,12 +552,14 @@ export function TransactionsView({
   }
 
   // A draft with title, owner and value becomes a real transaction on its own.
-  async function saveDraft(d: GridRow) {
-    if (savingDrafts.current.has(d.id)) return;
-    savingDrafts.current.add(d.id);
+  async function saveDraft(draft: GridRow) {
+    if (savingDrafts.current.has(draft.id)) return;
+    savingDrafts.current.add(draft.id);
+    // Empty date / payment month take today / the month on screen.
+    const d = withDefaults(draft, defaults);
     const title = ledger.find((l) => l.id === d.ledger_account_id);
     setDraftErrors((e) =>
-      Object.fromEntries(Object.entries(e).filter(([id]) => id !== d.id)),
+      Object.fromEntries(Object.entries(e).filter(([id]) => id !== draft.id)),
     );
     setSaving((n) => n + 1);
     try {
@@ -539,11 +578,11 @@ export function TransactionsView({
         amountIsTotal: true,
       });
       if (!res.ok) {
-        savingDrafts.current.delete(d.id);
-        setDraftErrors((e) => ({ ...e, [d.id]: res.error }));
+        savingDrafts.current.delete(draft.id);
+        setDraftErrors((e) => ({ ...e, [draft.id]: res.error }));
         return;
       }
-      savedDrafts.current.add(d.id);
+      savedDrafts.current.add(draft.id);
       if (d.payment_month !== `${month}-01`) {
         setNotice(
           `Lançamento criado em ${formatPaymentMonth(d.payment_month)} (outro mês).`,
@@ -551,10 +590,10 @@ export function TransactionsView({
       }
       router.refresh();
     } catch {
-      savingDrafts.current.delete(d.id);
+      savingDrafts.current.delete(draft.id);
       setDraftErrors((e) => ({
         ...e,
-        [d.id]: 'Não foi possível salvar. Tente novamente.',
+        [draft.id]: 'Não foi possível salvar. Tente novamente.',
       }));
     } finally {
       setSaving((n) => n - 1);
@@ -588,10 +627,13 @@ export function TransactionsView({
   }
 
   const incompleteDrafts = drafts
-    .filter((d) => !isBlankDraft(d, defaults))
+    .filter((d) => !isBlankDraft(d))
     .map((row) => ({ row, problems: missingFields(row) }))
     .filter((x) => x.problems.length > 0 || draftErrors[x.row.id]);
-  const gridValue = useMemo(() => [...filtered, ...drafts], [filtered, drafts]);
+  const gridValue = useMemo(
+    () => [...filtered.map(toGridRow), ...drafts],
+    [filtered, drafts],
+  );
   const prev = shiftMonth(month, -1);
   const next = shiftMonth(month, 1);
   const gridHeight = Math.min(
@@ -628,21 +670,67 @@ export function TransactionsView({
             →
           </Link>
         </nav>
-        <dl className="ml-auto flex gap-5 text-sm">
-          <div>
-            <dt className="text-muted">Entradas</dt>
-            <dd className="font-medium text-positive">{formatMoney(income)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Saídas</dt>
-            <dd className="font-medium">{formatMoney(expense)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Saldo</dt>
-            <dd className="font-medium">{formatMoney(income - expense)}</dd>
-          </div>
-        </dl>
       </div>
+
+      <section
+        aria-label="Resumo do mês por pessoa"
+        data-testid="summary"
+        className="mb-4 overflow-x-auto rounded-xl border border-line bg-surface"
+      >
+        <table className="w-full min-w-[22rem] text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-muted">
+              <th className="px-4 py-2 font-normal">Resumo</th>
+              <th className="px-4 py-2 text-right font-normal">Entradas</th>
+              <th className="px-4 py-2 text-right font-normal">Saídas</th>
+              <th className="px-4 py-2 text-right font-normal">Saldo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {summary.perOwner.map((o) => (
+              <tr key={o.personId} className="border-b border-line/60">
+                <th className="px-4 py-2 text-left font-medium">{o.name}</th>
+                <td className="px-4 py-2 text-right text-positive">
+                  {formatMoney(o.income)}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  {formatMoney(o.expense)}
+                </td>
+                <td
+                  className={`px-4 py-2 text-right font-medium ${
+                    o.balance < 0 ? 'text-negative' : ''
+                  }`}
+                >
+                  {formatMoney(o.balance)}
+                </td>
+              </tr>
+            ))}
+            {summary.perOwner.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-2 text-muted">
+                  Sem lançamentos neste mês.
+                </td>
+              </tr>
+            )}
+            <tr className="font-medium">
+              <th className="px-4 py-2 text-left">Total</th>
+              <td className="px-4 py-2 text-right text-positive">
+                {formatMoney(summary.total.income)}
+              </td>
+              <td className="px-4 py-2 text-right">
+                {formatMoney(summary.total.expense)}
+              </td>
+              <td
+                className={`px-4 py-2 text-right ${
+                  summary.total.balance < 0 ? 'text-negative' : ''
+                }`}
+              >
+                {formatMoney(summary.total.balance)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
       <div className="mb-3 grid gap-2 sm:grid-cols-3">
         <Input
@@ -710,7 +798,7 @@ export function TransactionsView({
               variant="ghost"
               size="sm"
               onClick={() => {
-                setDrafts([blankDraft(newDraftId(), defaults)]);
+                setDrafts([blankDraft(newDraftId())]);
                 setDraftErrors({});
               }}
             >
@@ -798,7 +886,7 @@ export function TransactionsView({
           value={gridValue}
           columns={columns}
           onChange={onChange}
-          createRow={() => blankDraft(newDraftId(), defaults)}
+          createRow={() => blankDraft(newDraftId())}
           // Rows are created by typing/pasting into the blank row and removed with Excluir.
           disableContextMenu
           rowClassName={({ rowData }) =>

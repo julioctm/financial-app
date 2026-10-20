@@ -45,6 +45,22 @@ export async function createWorkspace(page: Page, name: string) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
+// Grid columns, in the spreadsheet's order (index 0 is the row-number gutter).
+export const COL = {
+  date: 1,
+  month: 2,
+  year: 3,
+  card: 4,
+  payTo: 5,
+  owner: 6,
+  description: 7,
+  title: 8,
+  type: 9,
+  amount: 10,
+  split: 11,
+  category: 12,
+} as const;
+
 // Visible text of every grid row: inputs by value, selects by selected option.
 export async function gridRows(page: Page): Promise<string[][]> {
   return page.locator('.dsg-row').evaluateAll((rows) =>
@@ -53,11 +69,9 @@ export async function gridRows(page: Page): Promise<string[][]> {
       .filter((row) => !row.classList.contains('dsg-draft-row'))
       .map((row) =>
         Array.from(row.querySelectorAll('.dsg-cell')).map((cell) => {
-          const select = cell.querySelector('select');
-          if (select)
-            return (
-              select.selectedOptions[0]?.text.replace('—', '').trim() ?? ''
-            );
+          // Dropdown cells show their label in a span (the input only holds what is being typed).
+          if (cell.querySelector('input[role="combobox"]'))
+            return (cell.querySelector('span')?.textContent ?? '').trim();
           const input = cell.querySelector('input');
           return input ? input.value : (cell.textContent ?? '').trim();
         }),
@@ -136,11 +150,11 @@ export async function addExternalPerson(page: Page, name: string) {
 // Reads grid rows as { owner, payTo, split, amount, description } for the split-related columns.
 export async function splitRows(page: Page) {
   return (await gridRows(page)).map((r) => ({
-    description: r[3],
-    amount: r[5],
-    owner: r[8],
-    payTo: r[9],
-    split: r[10],
+    description: r[COL.description],
+    amount: r[COL.amount],
+    owner: r[COL.owner],
+    payTo: r[COL.payTo],
+    split: r[COL.split],
   }));
 }
 
@@ -162,8 +176,7 @@ export async function pasteInto(page: Page, cell: Locator, text: string) {
 }
 
 // Cell of a draft row; `which` picks the first (the one being fixed) or the last (the blank
-// row). Column indexes follow the grid order: Data(1) Pagamento(2) Descrição(3) Título(4)
-// Valor(5) Conta(6) Tipo(7) Dono(8) Pagar para(9).
+// row). Use the COL indexes.
 export const draftCell = (
   page: Page,
   column: number,
