@@ -83,3 +83,46 @@ export function suggestPaymentMonth(
   const month = closingDay && day > closingDay ? shiftMonth(key, 1) : key;
   return `${month}-01`;
 }
+
+// '2026-10-19' -> '19/10/2026'
+export function formatDateBr(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// Accepts '19/10/2026', '19/10/26', '1/2/2026', '19-10-2026', '19.10.2026' and '2026-10-19'
+// (pasted from a spreadsheet or typed) -> '2026-10-19'. Returns null for anything that is
+// not a real calendar date (e.g. 31/02/2026).
+export function parseDateInput(
+  input: string | null | undefined,
+): string | null {
+  const s = (input ?? '').trim();
+  if (!s) return null;
+  let m: RegExpMatchArray | null;
+  let y: number;
+  let mo: number;
+  let d: number;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+    y = Number(m[1]);
+    mo = Number(m[2]);
+    d = Number(m[3]);
+  } else if ((m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2}|\d{4})$/))) {
+    d = Number(m[1]);
+    mo = Number(m[2]);
+    y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]);
+  } else return null;
+  if (y < 1990 || y > 2100 || mo < 1 || mo > 12 || d < 1) return null;
+  const lastDay = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  if (d > lastDay) return null;
+  return `${y}-${pad2(mo)}-${pad2(d)}`;
+}
+
+// Today in the app's timezone, as 'YYYY-MM-DD'.
+export function todayIso(): string {
+  return new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+  });
+}

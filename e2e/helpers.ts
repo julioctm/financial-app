@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { localSupabaseEnv } from './local-env';
 
@@ -48,15 +48,20 @@ export async function createWorkspace(page: Page, name: string) {
 // Visible text of every grid row: inputs by value, selects by selected option.
 export async function gridRows(page: Page): Promise<string[][]> {
   return page.locator('.dsg-row').evaluateAll((rows) =>
-    rows.slice(1).map((row) =>
-      Array.from(row.querySelectorAll('.dsg-cell')).map((cell) => {
-        const select = cell.querySelector('select');
-        if (select)
-          return select.selectedOptions[0]?.text.replace('—', '').trim() ?? '';
-        const input = cell.querySelector('input');
-        return input ? input.value : (cell.textContent ?? '').trim();
-      }),
-    ),
+    rows
+      .slice(1)
+      .filter((row) => !row.classList.contains('dsg-draft-row'))
+      .map((row) =>
+        Array.from(row.querySelectorAll('.dsg-cell')).map((cell) => {
+          const select = cell.querySelector('select');
+          if (select)
+            return (
+              select.selectedOptions[0]?.text.replace('—', '').trim() ?? ''
+            );
+          const input = cell.querySelector('input');
+          return input ? input.value : (cell.textContent ?? '').trim();
+        }),
+      ),
   );
 }
 
@@ -138,3 +143,34 @@ export async function splitRows(page: Page) {
     split: r[10],
   }));
 }
+
+// Selects `cell` and pastes `text` the way a spreadsheet copy arrives (tab-separated columns,
+// one line per row), by dispatching the paste event the grid listens to.
+export async function pasteInto(page: Page, cell: Locator, text: string) {
+  await cell.click();
+  await page.evaluate((t) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', t);
+    document.dispatchEvent(
+      new ClipboardEvent('paste', {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, text);
+}
+
+// Cell of a draft row; `which` picks the first (the one being fixed) or the last (the blank
+// row). Column indexes follow the grid order: Data(1) Pagamento(2) Descrição(3) Título(4)
+// Valor(5) Conta(6) Tipo(7) Dono(8) Pagar para(9).
+export const draftCell = (
+  page: Page,
+  column: number,
+  which: 'first' | 'last' = 'last',
+) => {
+  const rows = page.locator('.dsg-draft-row');
+  return (which === 'first' ? rows.first() : rows.last())
+    .locator('.dsg-cell')
+    .nth(column);
+};

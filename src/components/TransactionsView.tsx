@@ -4,17 +4,17 @@ import 'react-datasheet-grid/dist/style.css';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   createTextColumn,
   DynamicDataSheetGrid as DataSheetGrid,
-  isoDateColumn,
   keyColumn,
   type Column,
 } from 'react-datasheet-grid';
 
 import {
   applyToInstallments,
+  createTransaction,
   deleteTransactions,
   setTransactionAmount,
   updateTransactionFields,
@@ -28,11 +28,24 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/card';
 import { FormMessage, Input, Select } from '@/components/ui/field';
 import {
+  formatDateBr,
   formatPaymentMonth,
   monthLabel,
+  parseDateInput,
   parsePaymentMonth,
   shiftMonth,
+  todayIso,
 } from '@/lib/dates';
+import {
+  blankDraft,
+  isBlankDraft,
+  isUnmatched,
+  missingFields,
+  signedAmount,
+  unmatchedText,
+  withTrailingBlank,
+  type DraftDefaults,
+} from '@/lib/drafts';
 import {
   editableMoney,
   formatMoney,
@@ -44,6 +57,7 @@ import type {
   LedgerOption,
   NamedOption,
   PersonOption,
+  GridRow,
   SplitDefault,
   TxRow,
 } from '@/lib/transactions-types';
@@ -117,6 +131,17 @@ const moneyColumn = createTextColumn<number | null>({
   formatForCopy: editableMoney,
 });
 
+// Typed or pasted as dd/mm/aaaa (what a spreadsheet copies); stored as ISO.
+const dateColumn = createTextColumn<string | null>({
+  continuousUpdates: false,
+  deletedValue: null,
+  parseUserInput: parseDateInput,
+  parsePastedValue: parseDateInput,
+  formatBlurredInput: formatDateBr,
+  formatInputOnFocus: formatDateBr,
+  formatForCopy: formatDateBr,
+});
+
 const monthColumn = createTextColumn<string | null>({
   continuousUpdates: false,
   deletedValue: null,
@@ -150,6 +175,22 @@ export function TransactionsView({
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
+  // Drafts: new rows that live only in the browser until they have everything a transaction
+  // needs. The grid always ends with one blank draft, where you type or paste new rows.
+  const idCounter = useRef(0);
+  const newDraftId = () => `draft-${++idCounter.current}`;
+  const defaultsFor = (m: string): DraftDefaults => ({
+    purchaseDate: todayIso(),
+    paymentMonth: `${m}-01`,
+  });
+  const defaults = useMemo(() => defaultsFor(month), [month]);
+  const [drafts, setDrafts] = useState<GridRow[]>(() => [
+    blankDraft(`draft-${++idCounter.current}`, defaultsFor(month)),
+  ]);
+  const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
+  const savingDrafts = useRef(new Set<string>()); // guards against saving a draft twice
+  const savedDrafts = useRef(new Set<string>()); // saved; removed once the server data arrives
+  const [notice, setNotice] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(0);
@@ -166,12 +207,33 @@ export function TransactionsView({
 
   // Server data changed (navigation, router.refresh): adopt it.
   const [seen, setSeen] = useState(initialRows);
+  const [seenMonth, setSeenMonth] = useState(month);
   if (seen !== initialRows) {
     setSeen(initialRows);
     setRows(initialRows);
     setSelectedIds((ids) =>
       ids.filter((id) => initialRows.some((r) => r.id === id)),
     );
+    // Drafts that were saved now exist as real rows.
+    if (savedDrafts.current.size > 0) {
+      const done = new Set(savedDrafts.current);
+      savedDrafts.current.clear();
+      done.forEach((id) => savingDrafts.current.delete(id));
+      setDrafts((d) =>
+        withTrailingBlank(
+          d.filter((x) => !done.has(x.id)),
+          defaults,
+          newDraftId,
+        ),
+      );
+    }
+  }
+  if (seenMonth !== month) {
+    // New month: unsaved drafts do not follow you.
+    setSeenMonth(month);
+    setDrafts([blankDraft(newDraftId(), defaultsFor(month))]);
+    setDraftErrors({});
+    setNotice(null);
   }
 
   const filtered = useMemo(() => {
@@ -193,7 +255,7 @@ export function TransactionsView({
     0,
   );
 
-  const categoryOf = (ledgerId: string) => {
+  const categoryOf = (ledgerId: string | null) => {
     const l = ledger.find((x) => x.id === ledgerId);
     return categories.find((c) => c.id === l?.category_id)?.name ?? '';
   };
@@ -205,7 +267,7 @@ export function TransactionsView({
       {
         ...keyColumn<TxRow, 'purchase_date'>(
           'purchase_date',
-          isoDateColumn as Column,
+          dateColumn as Column,
         ),
         title: 'Data',
         minWidth: 110,
@@ -295,12 +357,12 @@ export function TransactionsView({
         title: 'Divisão',
         minWidth: 80,
         disabled: true,
-        component: ({ rowData }: { rowData: TxRow }) => (
+        component: ({ rowData }: { rowData: GridRow }) => (
           <span className="truncate px-2 text-muted">
             {formatPercent(rowData.split_percent)}
           </span>
         ),
-        copyValue: ({ rowData }: { rowData: TxRow }) =>
+        copyValue: ({ rowData }: { rowData: GridRow }) =>
           formatPercent(rowData.split_percent),
       },
       {
@@ -308,15 +370,15 @@ export function TransactionsView({
         title: 'Categoria',
         minWidth: 110,
         disabled: true,
-        component: ({ rowData }: { rowData: TxRow }) => (
+        component: ({ rowData }: { rowData: GridRow }) => (
           <span className="truncate px-2 text-muted">
             {categoryOf(rowData.ledger_account_id)}
           </span>
         ),
-        copyValue: ({ rowData }: { rowData: TxRow }) =>
+        copyValue: ({ rowData }: { rowData: GridRow }) =>
           categoryOf(rowData.ledger_account_id),
       },
-    ] as Column<TxRow>[];
+    ] as Column[];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ledger, categories, envelopes, accounts, people]);
 
@@ -388,22 +450,114 @@ export function TransactionsView({
     }
   }
 
-  function onChange(newValue: TxRow[], operations: Operation[]) {
+  function onChange(newValue: GridRow[], operations: Operation[]) {
+    const nReal = filtered.length;
+    // Saved rows are deleted only through the Excluir button (it asks for confirmation).
+    if (
+      newValue.length < nReal ||
+      operations.some((op) => op.type === 'DELETE' && op.fromRowIndex < nReal)
+    ) {
+      setError(
+        'Para excluir lançamentos, selecione a linha e use o botão Excluir.',
+      );
+      return;
+    }
+
+    // 1) Saved rows
     const before = filtered;
     const updated = new Map<string, TxRow>();
     for (const op of operations) {
       if (op.type !== 'UPDATE') continue;
-      for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
-        if (before[i] && newValue[i]) updated.set(before[i].id, newValue[i]);
+      for (let i = op.fromRowIndex; i < Math.min(op.toRowIndex, nReal); i++) {
+        if (before[i] && newValue[i])
+          updated.set(before[i].id, newValue[i] as TxRow);
       }
     }
-    if (updated.size === 0) return;
-    setError(null);
-    setPrompt(null);
-    setRows((prev) => prev.map((r) => updated.get(r.id) ?? r));
-    for (const [id, next] of updated) {
-      const old = before.find((r) => r.id === id);
-      if (old) void persist(old, next);
+    for (const [id, next] of [...updated]) {
+      const bad = Object.entries(next).find(([, v]) => isUnmatched(v));
+      if (bad) {
+        setError(
+          `${FIELD_LABELS[bad[0]] ?? bad[0]} “${unmatchedText(bad[1] as string)}” não encontrado nos cadastros. A alteração foi desfeita.`,
+        );
+        updated.delete(id);
+      }
+    }
+    if (updated.size > 0) {
+      setError(null);
+      setPrompt(null);
+      setRows((prev) => prev.map((r) => updated.get(r.id) ?? r));
+      for (const [id, next] of updated) {
+        const old = before.find((r) => r.id === id);
+        if (old) void persist(old, next);
+      }
+    }
+
+    // 2) Drafts: everything after the saved rows
+    const incoming = newValue.slice(nReal).map((r) =>
+      String(r.id).startsWith('draft-')
+        ? { ...r, draft: true }
+        : // a duplicated saved row: it becomes a new draft
+          {
+            ...r,
+            id: newDraftId(),
+            draft: true,
+            updated_at: '',
+            installment_group_id: null,
+            installment_number: null,
+            split_percent: null,
+          },
+    );
+    const nextDrafts = withTrailingBlank(incoming, defaults, newDraftId);
+    setDrafts(nextDrafts);
+    for (const d of nextDrafts) {
+      if (missingFields(d).length === 0) void saveDraft(d);
+    }
+  }
+
+  // A draft with title, owner and value becomes a real transaction on its own.
+  async function saveDraft(d: GridRow) {
+    if (savingDrafts.current.has(d.id)) return;
+    savingDrafts.current.add(d.id);
+    const title = ledger.find((l) => l.id === d.ledger_account_id);
+    setDraftErrors((e) =>
+      Object.fromEntries(Object.entries(e).filter(([id]) => id !== d.id)),
+    );
+    setSaving((n) => n + 1);
+    try {
+      const res = await createTransaction({
+        workspaceId,
+        purchaseDate: d.purchase_date as string,
+        paymentMonth: d.payment_month as string,
+        accountId: d.account_id,
+        ledgerAccountId: d.ledger_account_id as string,
+        envelopeId: d.envelope_id ?? title?.default_envelope_id ?? null,
+        description: d.description,
+        amountCents: signedAmount(d.amount_cents as number, title?.kind),
+        payToPersonId: d.pay_to_person_id,
+        shares: [{ person_id: d.owner_person_id as string, percent: 100 }],
+        installments: 1,
+        amountIsTotal: true,
+      });
+      if (!res.ok) {
+        savingDrafts.current.delete(d.id);
+        setDraftErrors((e) => ({ ...e, [d.id]: res.error }));
+        return;
+      }
+      savedDrafts.current.add(d.id);
+      if (d.payment_month !== `${month}-01`) {
+        setNotice(
+          `Lançamento criado em ${formatPaymentMonth(d.payment_month)} (outro mês).`,
+        );
+      }
+      router.refresh();
+    } catch {
+      savingDrafts.current.delete(d.id);
+      setDraftErrors((e) => ({
+        ...e,
+        [d.id]: 'Não foi possível salvar. Tente novamente.',
+      }));
+    } finally {
+      setSaving((n) => n - 1);
     }
   }
 
@@ -433,11 +587,16 @@ export function TransactionsView({
     router.refresh();
   }
 
+  const incompleteDrafts = drafts
+    .filter((d) => !isBlankDraft(d, defaults))
+    .map((row) => ({ row, problems: missingFields(row) }))
+    .filter((x) => x.problems.length > 0 || draftErrors[x.row.id]);
+  const gridValue = useMemo(() => [...filtered, ...drafts], [filtered, drafts]);
   const prev = shiftMonth(month, -1);
   const next = shiftMonth(month, 1);
   const gridHeight = Math.min(
     640,
-    Math.max(220, (filtered.length + 1) * 36 + 44),
+    Math.max(220, (gridValue.length + 1) * 36 + 44),
   );
 
   return (
@@ -526,6 +685,51 @@ export function TransactionsView({
           </Button>
         </div>
       )}
+      {notice && (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-lg bg-accent-tint px-3 py-2 text-sm text-accent-ink">
+          <span>{notice}</span>
+          <Button variant="ghost" size="sm" onClick={() => setNotice(null)}>
+            Fechar
+          </Button>
+        </div>
+      )}
+      {incompleteDrafts.length > 0 && (
+        <div
+          className="mb-3 space-y-1 rounded-lg bg-accent-tint px-3 py-2 text-sm text-accent-ink"
+          role="status"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <strong className="font-medium">
+              {incompleteDrafts.length}{' '}
+              {incompleteDrafts.length === 1
+                ? 'linha incompleta'
+                : 'linhas incompletas'}{' '}
+              (ainda não salvas)
+            </strong>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDrafts([blankDraft(newDraftId(), defaults)]);
+                setDraftErrors({});
+              }}
+            >
+              Descartar
+            </Button>
+          </div>
+          <ul className="list-disc pl-5">
+            {incompleteDrafts.slice(0, 5).map(({ row, problems }) => (
+              <li key={row.id}>
+                Linha {gridValue.findIndex((g) => g.id === row.id) + 1}:{' '}
+                {draftErrors[row.id] ?? problems.join(', ')}
+              </li>
+            ))}
+            {incompleteDrafts.length > 5 && (
+              <li>e mais {incompleteDrafts.length - 5}…</li>
+            )}
+          </ul>
+        </div>
+      )}
       {prompt && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-accent-tint px-3 py-2 text-sm text-accent-ink">
           <span>
@@ -586,15 +790,20 @@ export function TransactionsView({
       )}
 
       <div className="tx-grid" aria-busy={saving > 0}>
-        <DataSheetGrid<TxRow>
+        <DataSheetGrid<GridRow>
           // The static grid variant freezes callbacks and columns after the first render, which
           // breaks selection and edits as data changes; the dynamic one re-renders with props.
           // Keyed by month so navigating resets its internal selection.
           key={month}
-          value={filtered}
+          value={gridValue}
           columns={columns}
           onChange={onChange}
-          lockRows
+          createRow={() => blankDraft(newDraftId(), defaults)}
+          // Rows are created by typing/pasting into the blank row and removed with Excluir.
+          disableContextMenu
+          rowClassName={({ rowData }) =>
+            rowData.draft ? 'dsg-draft-row' : undefined
+          }
           addRowsComponent={false}
           height={gridHeight}
           rowHeight={36}
@@ -614,7 +823,8 @@ export function TransactionsView({
       {filtered.length === 0 && (
         <p className="mt-4 text-muted">
           Nenhum lançamento neste mês
-          {rows.length > 0 ? ' com esses filtros' : ''}. Use “Novo lançamento”.
+          {rows.length > 0 ? ' com esses filtros' : ''}. Preencha a linha em
+          branco da tabela, cole linhas do Sheets ou use “Novo lançamento”.
         </p>
       )}
 

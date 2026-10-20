@@ -17,6 +17,14 @@ Depois de usar a primeira versão, o modelo mudou para espelhar a planilha: **um
 - O acerto de contas passa a ser: linha com "Pagar para" diferente do dono = o dono deve àquela pessoa o valor da linha.
 - A tabela `transaction_shares` e o invariante "partes somam 100%" foram removidos; o rateio padrão continua sendo usado só para sugerir os percentuais ao criar.
 
+## Linha em branco e rascunhos (2026-10-20)
+
+- A tabela termina **sempre** com uma linha em branco, onde se digita ou **cola linhas do Sheets** (colunas separadas por tab, uma linha por lançamento). Colar mais linhas do que existem cria novas.
+- Linhas novas são **rascunhos**: ficam só no navegador (somem ao recarregar ou trocar de mês). O mínimo para virar lançamento é **título, dono e valor** (data e mês de pagamento já vêm preenchidos: hoje e o mês exibido). Ao ter o mínimo, a linha **salva sozinha**.
+- Colar aceita `dd/mm/aaaa`, `R$ 1.234,56` e nomes de título, conta, tipo e pessoa (sem diferenciar maiúsculas). Um nome que não existe **não é criado**: a célula fica marcada em vermelho (`⚠ nome`), a linha continua rascunho e o aviso "N linhas incompletas" diz o que falta; é possível corrigir na própria linha ou **descartar**.
+- O sinal do valor segue o título (receita entra, o resto sai), então `10` e `-10` num título de despesa dão a mesma saída de 10,00.
+- Linhas já salvas não podem ser removidas pela tabela (só pelo botão **Excluir**, com confirmação).
+
 As seções abaixo descrevem o modelo original; onde divergirem, vale esta revisão (a migration `20261020000000_owner_rows.sql` converte dados existentes).
 
 ## 1. Contexto e Motivação
