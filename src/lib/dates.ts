@@ -1,3 +1,5 @@
+import { asUnmatched } from '@/lib/unmatched';
+
 // Months travel as 'YYYY-MM' in URLs and as 'YYYY-MM-01' in the database.
 
 const SHORT_MONTHS = [
@@ -126,3 +128,113 @@ export function todayIso(): string {
     timeZone: 'America/Sao_Paulo',
   });
 }
+
+// ---------------------------------------------------------------------------
+// Payment month as the spreadsheet shows it: month ("JAN") and year (2026) in separate columns
+// ---------------------------------------------------------------------------
+
+export const MONTH_ABBR = [
+  'JAN',
+  'FEV',
+  'MAR',
+  'ABR',
+  'MAI',
+  'JUN',
+  'JUL',
+  'AGO',
+  'SET',
+  'OUT',
+  'NOV',
+  'DEZ',
+];
+const MONTH_NAMES = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+];
+
+const stripAccents = (t: string) =>
+  t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+// 'OUT' | 'out' | 'outubro' | '10' | '010' -> 10; empty -> null; anything else -> unmatched marker.
+export function parseMonthPart(
+  input: string | null | undefined,
+): number | string | null {
+  const t = stripAccents((input ?? '').trim().toLowerCase());
+  if (!t) return null;
+  if (/^\d{1,2}$/.test(t)) {
+    const n = Number(t);
+    return n >= 1 && n <= 12 ? n : asUnmatched(input as string);
+  }
+  const byAbbr = MONTH_ABBR.findIndex((m) => m.toLowerCase() === t);
+  if (byAbbr >= 0) return byAbbr + 1;
+  const byName = MONTH_NAMES.findIndex((m) => stripAccents(m) === t);
+  return byName >= 0 ? byName + 1 : asUnmatched(input as string);
+}
+
+// '2026' | '26' -> 2026; empty -> null; anything else -> unmatched marker.
+export function parseYearPart(
+  input: string | null | undefined,
+): number | string | null {
+  const t = (input ?? '').trim();
+  if (!t) return null;
+  if (!/^\d{2}$|^\d{4}$/.test(t)) return asUnmatched(t);
+  const y = t.length === 2 ? 2000 + Number(t) : Number(t);
+  return y >= 1990 && y <= 2100 ? y : asUnmatched(t);
+}
+
+export const formatMonthPart = (
+  m: number | string | null | undefined,
+): string =>
+  typeof m === 'number'
+    ? (MONTH_ABBR[m - 1] ?? '')
+    : typeof m === 'string'
+      ? `⚠ ${m.slice(2)}`
+      : '';
+
+export const formatYearPart = (
+  y: number | string | null | undefined,
+): string =>
+  typeof y === 'number'
+    ? String(y)
+    : typeof y === 'string'
+      ? `⚠ ${y.slice(2)}`
+      : '';
+
+// '2026-10-01' -> { month: 10, year: 2026 }
+export function paymentParts(paymentMonth: string | null | undefined): {
+  month: number | null;
+  year: number | null;
+} {
+  if (!paymentMonth) return { month: null, year: null };
+  const [y, m] = paymentMonth.split('-').map(Number);
+  return { month: m, year: y };
+}
+
+// (10, 2026) -> '2026-10-01'; null unless both parts are real numbers.
+export function composePaymentMonth(
+  month: number | string | null | undefined,
+  year: number | string | null | undefined,
+): string | null {
+  if (typeof month !== 'number' || typeof year !== 'number') return null;
+  return `${year}-${String(month).padStart(2, '0')}-01`;
+}
+
+// Date typed or pasted in a cell: empty -> null; a real date -> ISO; anything else -> marker.
+export function parseDateCell(input: string | null | undefined): string | null {
+  const t = (input ?? '').trim();
+  if (!t) return null;
+  return parseDateInput(t) ?? asUnmatched(t);
+}
+
+export const formatDateCell = (v: string | null | undefined): string =>
+  !v ? '' : v.startsWith('?:') ? `⚠ ${v.slice(2)}` : formatDateBr(v);

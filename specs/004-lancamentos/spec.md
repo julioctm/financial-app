@@ -19,6 +19,9 @@ Depois de usar a primeira versão, o modelo mudou para espelhar a planilha: **um
 
 ## Linha em branco e rascunhos (2026-10-20)
 
+- (Revisado em 2026-10-20) A linha em branco é **realmente em branco**: nenhuma coluna vem preenchida; data e mês de pagamento vazios assumem hoje e o mês exibido **só ao salvar**. As colunas seguem **exatamente a ordem da planilha**: Data da transação, Mês Pagamento, Ano Pagamento, Cartão, Pagar Para, Dono, Descrição, Título, Tipo, Valor (depois, somente leitura: Divisão e Categoria). Mês e Ano são duas colunas (`OUT` / `2026`), como na planilha.
+- **Teclado**: nas colunas de lista, Enter abre, digitar filtra, as setas escolhem e Enter, Tab ou sair da célula **aplicam** o valor destacado (Esc cancela); Tab segue para a próxima célula.
+- No topo há o **resumo por pessoa** (entradas, saídas e saldo por dono, mais o total) das linhas exibidas.
 - A tabela termina **sempre** com uma linha em branco, onde se digita ou **cola linhas do Sheets** (colunas separadas por tab, uma linha por lançamento). Colar mais linhas do que existem cria novas.
 - Linhas novas são **rascunhos**: ficam só no navegador (somem ao recarregar ou trocar de mês). O mínimo para virar lançamento é **título, dono e valor** (data e mês de pagamento já vêm preenchidos: hoje e o mês exibido). Ao ter o mínimo, a linha **salva sozinha**.
 - Colar aceita `dd/mm/aaaa`, `R$ 1.234,56` e nomes de título, conta, tipo e pessoa (sem diferenciar maiúsculas). Um nome que não existe **não é criado**: a célula fica marcada em vermelho (`⚠ nome`), a linha continua rascunho e o aviso "N linhas incompletas" diz o que falta; é possível corrigir na própria linha ou **descartar**.

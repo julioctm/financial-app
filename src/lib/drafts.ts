@@ -1,23 +1,24 @@
-import type { GridRow, LedgerOption } from '@/lib/transactions-types';
+import { composePaymentMonth, paymentParts } from '@/lib/dates';
+import type { GridRow, LedgerOption, TxRow } from '@/lib/transactions-types';
+import { isUnmatched, UNMATCHED_PREFIX, unmatchedText } from '@/lib/unmatched';
+
+export { isUnmatched, UNMATCHED_PREFIX, unmatchedText };
 
 // Drafts are new grid rows that exist only in the browser until they have everything a
 // transaction needs. Pure helpers so the rules can be unit-tested.
 
-// A pasted/typed select value that matched nothing is kept as '?:<text>' so the user can
-// see what was not found (instead of the cell silently staying empty).
-export const UNMATCHED_PREFIX = '?:';
-export const isUnmatched = (v: unknown): v is string =>
-  typeof v === 'string' && v.startsWith(UNMATCHED_PREFIX);
-export const unmatchedText = (v: string) => v.slice(UNMATCHED_PREFIX.length);
-
 export type DraftDefaults = { purchaseDate: string; paymentMonth: string };
 
-export function blankDraft(id: string, defaults: DraftDefaults): GridRow {
+// A new row is truly empty. Data and payment month are filled in with defaults (today and the
+// month on screen) only when the row is saved, if the user left them empty.
+export function blankDraft(id: string): GridRow {
   return {
     id,
     draft: true,
-    purchase_date: defaults.purchaseDate,
-    payment_month: defaults.paymentMonth,
+    purchase_date: null,
+    payment_month: null,
+    pm_month: null,
+    pm_year: null,
     description: '',
     ledger_account_id: null,
     envelope_id: null,
@@ -32,19 +33,31 @@ export function blankDraft(id: string, defaults: DraftDefaults): GridRow {
   };
 }
 
-// The always-present empty row at the end of the grid: nothing typed beyond the defaults.
-export function isBlankDraft(d: GridRow, defaults: DraftDefaults): boolean {
+// Saved transaction -> grid row (adds the month/year columns).
+export function toGridRow(r: TxRow): GridRow {
+  const { month, year } = paymentParts(r.payment_month);
+  return { ...r, pm_month: month, pm_year: year };
+}
+
+// The always-present empty row at the end of the grid: nothing typed at all.
+export function isBlankDraft(d: GridRow): boolean {
   return (
     d.description === '' &&
+    d.purchase_date == null &&
+    d.pm_month == null &&
+    d.pm_year == null &&
     d.ledger_account_id == null &&
     d.envelope_id == null &&
     d.account_id == null &&
     d.pay_to_person_id == null &&
     d.owner_person_id == null &&
-    d.amount_cents == null &&
-    (d.purchase_date == null || d.purchase_date === defaults.purchaseDate) &&
-    (d.payment_month == null || d.payment_month === defaults.paymentMonth)
+    d.amount_cents == null
   );
+}
+
+// payment_month always follows the two month/year columns.
+export function syncPaymentMonth(d: GridRow): GridRow {
+  return { ...d, payment_month: composePaymentMonth(d.pm_month, d.pm_year) };
 }
 
 const REQUIRED_SELECTS: [keyof GridRow, string, string][] = [
@@ -52,32 +65,50 @@ const REQUIRED_SELECTS: [keyof GridRow, string, string][] = [
   ['owner_person_id', 'Dono', 'o dono'],
 ];
 const OPTIONAL_SELECTS: [keyof GridRow, string][] = [
-  ['account_id', 'Conta'],
+  ['account_id', 'Cartão'],
   ['envelope_id', 'Tipo'],
   ['pay_to_person_id', 'Pagar para'],
 ];
+
+const bad = (label: string, v: string) =>
+  `${label} “${unmatchedText(v)}” não encontrado`;
 
 // What still prevents a draft from becoming a transaction, in plain Portuguese.
 export function missingFields(d: GridRow): string[] {
   const out: string[] = [];
   for (const [key, label, what] of REQUIRED_SELECTS) {
     const v = d[key];
-    if (isUnmatched(v))
-      out.push(`${label} “${unmatchedText(v)}” não encontrado`);
+    if (isUnmatched(v)) out.push(bad(label, v));
     else if (!v) out.push(`falta ${what}`);
   }
   for (const [key, label] of OPTIONAL_SELECTS) {
     const v = d[key];
-    if (isUnmatched(v))
-      out.push(`${label} “${unmatchedText(v)}” não encontrado`);
+    if (isUnmatched(v)) out.push(bad(label, v));
   }
-  if (!d.purchase_date) out.push('falta a data');
-  if (!d.payment_month) out.push('falta o mês de pagamento');
+  if (isUnmatched(d.purchase_date))
+    out.push(`Data “${unmatchedText(d.purchase_date)}” inválida`);
+  if (isUnmatched(d.pm_month))
+    out.push(`Mês “${unmatchedText(d.pm_month)}” inválido`);
+  else if (d.pm_month == null && d.pm_year != null)
+    out.push('falta o mês de pagamento');
+  if (isUnmatched(d.pm_year))
+    out.push(`Ano “${unmatchedText(d.pm_year)}” inválido`);
+  else if (d.pm_year == null && d.pm_month != null)
+    out.push('falta o ano de pagamento');
   if (d.amount_cents == null || d.amount_cents === 0) out.push('falta o valor');
   return out;
 }
 
 export const isComplete = (d: GridRow) => missingFields(d).length === 0;
+
+// Empty date / payment month take the defaults (today / the month on screen).
+export function withDefaults(d: GridRow, defaults: DraftDefaults): GridRow {
+  return {
+    ...d,
+    purchase_date: d.purchase_date ?? defaults.purchaseDate,
+    payment_month: d.payment_month ?? defaults.paymentMonth,
+  };
+}
 
 // The title decides the direction of the money: income comes in, everything else goes out.
 // (A negative number typed or pasted for an expense stays an expense.)
@@ -92,10 +123,9 @@ export function signedAmount(
 // list (e.g. a draft the user cleared) are dropped.
 export function withTrailingBlank(
   drafts: GridRow[],
-  defaults: DraftDefaults,
   newId: () => string,
 ): GridRow[] {
-  const filled = drafts.filter((d) => !isBlankDraft(d, defaults));
-  const blank = [...drafts].reverse().find((d) => isBlankDraft(d, defaults));
-  return [...filled, blank ?? blankDraft(newId(), defaults)];
+  const filled = drafts.filter((d) => !isBlankDraft(d));
+  const blank = [...drafts].reverse().find((d) => isBlankDraft(d));
+  return [...filled, blank ?? blankDraft(newId())];
 }
